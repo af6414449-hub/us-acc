@@ -449,8 +449,12 @@
             try {
                 const pages = await extractTextFromPdf(file);
                 const allLines = pages.flat();
-                const entries = parseKeyValue(allLines);
 
+                // ВЫВОДИМ СЫРЫЕ СТРОКИ В КОНСОЛЬ
+                console.log('=== RAW LINES FROM PDF ===');
+                console.log(allLines);
+
+                const entries = parseKeyValue(allLines);
                 console.log('Распознанные поля:', entries);
 
                 if (!entries.length) return;
