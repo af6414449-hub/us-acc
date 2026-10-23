@@ -144,16 +144,17 @@
         }
         .left-panel.parsed .action-stack { display: flex; }
 
-        /* Квадратные кнопки с мягкими приглушёнными цветами */
+        /* Квадратные кнопки, крупные надписи, системный шрифт */
         .action-btn {
             width: 56px;
             height: 56px;
             border: none;
             border-radius: 12px;
-            font: inherit;
-            font-size: 11px;
-            font-weight: bold;
-            letter-spacing: .02em;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: .01em;
             color: #fff;
             cursor: pointer;
             display: flex;
@@ -166,7 +167,6 @@
         .action-btn:hover { filter: brightness(0.94); }
         .action-btn:active { transform: scale(.97); }
 
-        /* Крестик — чёрная кнопка */
         .action-btn.close {
             background-color: #2a2a2a;
         }
@@ -180,17 +180,35 @@
             stroke-linecap: round;
         }
 
-        /* Синяя AIS — приглушённая */
         .action-btn.ais {
             background-color: #5b7a9d;
         }
         .action-btn.ais:hover { background-color: #4d6a8a; }
 
-        /* Красная USV — приглушённая */
         .action-btn.usv {
             background-color: #b0584f;
         }
         .action-btn.usv:hover { background-color: #9d4a42; }
+
+        /* SVG-надписи AIS и USV */
+        .action-btn .label-svg {
+            display: block;
+            width: 36px;
+            height: 36px;
+        }
+        .action-btn.ais .label-svg { width: 34px; }
+        .action-btn.usv .label-svg { width: 36px; }
+
+        .action-btn .label-svg text {
+            fill: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            letter-spacing: .01em;
+            dominant-baseline: middle;
+            text-anchor: middle;
+        }
     </style>
 </head>
 <body>
@@ -201,8 +219,20 @@
                     <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
                 </svg>
             </button>
-            <button class="action-btn ais" type="button">AIS</button>
-            <button class="action-btn usv" type="button">USV</button>
+
+            <!-- AIS как SVG -->
+            <button class="action-btn ais" type="button" aria-label="AIS">
+                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <text x="20" y="21">AIS</text>
+                </svg>
+            </button>
+
+            <!-- USV как SVG -->
+            <button class="action-btn usv" type="button" aria-label="USV">
+                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <text x="20" y="21">USV</text>
+                </svg>
+            </button>
         </div>
 
         <button class="upload-btn" id="dropZone" type="button"
