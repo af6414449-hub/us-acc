@@ -251,8 +251,8 @@
             return pages;
         }
 
-        /* Служебные шапки, заголовки секций, обрывки вопросов
-           и заголовки, которые могут встретиться отдельной строкой без ':' */
+        /* Только служебные шапки, заголовки секций и общие обрывки.
+           Обрывки вопросов сюда НЕ входят — они склеиваются с ключом. */
         const DROP_PATTERNS = [
             /^Application ID/i,
             /^Online Nonimmigrant Visa Application/i,
@@ -282,105 +282,28 @@
             /^Additional Point of Contact Information$/i,
             /^navigate to the next section/i,
             /^on the right side of the page/i,
-            /^will be directed to the Sign and Submit/i,
-            /^indicated above/i,
-            /^country\/region of origin \(nationality\) above/i,
-            /^residence$/i,
-            /^port of entry$/i,
-            /^or above$/i,
-            /^years$/i,
-            /^tissue$/i,
-            /^States$/i,
-            /^social, or charitable organization/i,
-            /^explosives, nuclear/i,
-            /^insurgent organization/i,
-            /^welfare of yourself or others/i,
-            /^pardon, amnesty/i,
-            /^substances$/i,
-            /^outside the United States$/i,
-            /^last five years/i,
-            /^terrorist activities$/i,
-            /^terrorist organizations$/i,
-            /^political killings/i,
-            /^sterilization against/i,
-            /^means$/i,
-            /^official or otherwise/i,
-            /^granted legal custody/i,
-            /^after November 30/i,
-            /^\(Communicable diseases of/i,
-            /^public significance include/i,
-            /^lymphogranuloma venereum/i,
-            /^determined by the Department/i,
-            /^time, particularly severe/i,
-            /^have you been engaged in prostitution/i,
-            /^while in the United States$/i,
-            /^Do you hold or have you held any nationality other than the one$/i,
-            /^Are you a permanent resident of a country\/region other than your$/i,
-            /^Are you applying in the same country or location where the visa above$/i,
-            /^was issued, and is this country or location your place of principal of$/i,
-            /^Have you ever been refused a U\.S\. Visa, or been refused admission to$/i,
-            /^the United States, or withdrawn your application for admission at the$/i,
-            /^Has anyone ever filed an immigrant petition on your behalf with the$/i,
-            /^United States Citizenship and Immigration Services\?$/i,
-            /^Do you have any immediate relatives, not including parents in the$/i,
-            /^Have you attended any educational institutions at a secondary level$/i,
-            /^Have you traveled to any countries\/regions within the last five$/i,
-            /^Have you belonged to, contributed to, or worked for any professional,/i,
-            /^Do you have any specialized skills or training, such as firearms,/i,
-            /^Have you ever served in, been a member of, or been involved with a$/i,
-            /^paramilitary unit, vigilante unit, rebel group, guerrilla group, or$/i,
-            /^Do you have a mental or physical disorder that poses or is likely to pose a threat to the safety or$/i,
-            /^Have you ever been arrested or convicted for any offense or crime, even though subject of a$/i,
-            /^Have you ever violated, or engaged in a conspiracy to violate, any law relating to controlled$/i,
-            /^Are you coming to the United States to engage in prostitution or unlawful commercialized vice or$/i,
-            /^Have you ever committed or conspired to commit a human trafficking offense in the United States or$/i,
-            /^Are you the spouse, son, or daughter of an individual who has committed or conspired to commit a$/i,
-            /^human trafficking offense in the United States or outside the United States and have you within the$/i,
-            /^Have you knowingly aided, abetted, assisted or colluded with an individual who has committed or$/i,
-            /^conspired to commit a severe human trafficking offense in the United States or outside the United$/i,
-            /^Do you seek to engage in espionage, sabotage, export control violations, or any other illegal activity$/i,
-            /^Do you seek to engage in terrorist activities while in the United States or have you ever engaged in$/i,
-            /^Have you ever or do you intend to provide financial assistance or other support to terrorists or$/i,
-            /^Are you the spouse, son, or daughter of an individual who has engaged in terrorist activity, including$/i,
-            /^providing financial assistance or other support to terrorists or terrorist organizations, in the last five$/i,
-            /^Have you committed, ordered, incited, assisted, or otherwise participated in extrajudicial killings,/i,
-            /^Have you, while serving as a government official, been responsible for or directly carried out, at any$/i,
-            /^Have you ever been directly involved in the establishment or enforcement of the population controls$/i,
-            /^forcing a woman to undergo an abortion against her free choice or a man or a woman to undergo$/i,
-            /^Have you ever been directly involved in the coercive transplantation of human organs or bodily$/i,
-            /^Have you ever sought to obtain or assist others to obtain a visa, entry into the United States, or any$/i,
-            /^other United States immigration benefit by fraud or willful misrepresentation or other unlawful$/i,
-            /^Have you ever been unlawfully present, overstayed the amount of time granted by an immigration$/i,
-            /^Have you ever withheld custody of a U\.S\. citizen child outside the United States from a person$/i,
-            /^Have you attended a public elementary school on student \(F\) status or a public secondary school$/i
+            /^will be directed to the Sign and Submit/i
         ];
 
         function shouldDrop(raw) {
             return DROP_PATTERNS.some(re => re.test(raw));
         }
 
-        /* Признак значения (не ключа) */
         const VALUE_LIKE = /^(YES|NO|DOES NOT APPLY|N\/A|DO NOT KNOW)$/i;
 
         function looksLikeValue(str) {
             if (!str) return false;
             if (VALUE_LIKE.test(str)) return true;
-            if (/^\d{1,2}\s+[A-Z]+ \d{4}$/i.test(str)) return true; // дата
+            if (/^\d{1,2}\s+[A-Z]+ \d{4}$/i.test(str)) return true;
             if (/^\d{4}$/.test(str)) return true;
             if (/^\d+$/.test(str)) return true;
-            if (/^\+?\d[\d\s()-]{5,}$/.test(str)) return true;       // телефон
-            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return true; // email
-            if (/^https?:\/\//i.test(str)) return true;              // URL
-            if (/^\d+\s+[A-Z()]+$/i.test(str)) return true;          // "2 MONTH(S)"
+            if (/^\+?\d[\d\s()-]{5,}$/.test(str)) return true;
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return true;
+            if (/^https?:\/\//i.test(str)) return true;
+            if (/^\d+\s+[A-Z()]+$/i.test(str)) return true;
             return false;
         }
 
-        /* Парсинг строк вида "Ключ: значение".
-           Строки-«—» выбрасываются.
-           Строка без ':' и не value-like:
-             - если у предыдущего ключа уже есть значение —
-               это продолжение значения, приклеиваем;
-             - если значения нет — игнорируем (мусорный заголовок). */
         function parseKeyValue(lines) {
             const cleaned = lines
                 .map(l => l.trim())
@@ -403,17 +326,15 @@
                 if (!entries.length) continue;
 
                 if (looksLikeValue(raw)) {
-                    if (last && !last.value) {
-                        last.value = raw;
-                    }
+                    if (last && !last.value) last.value = raw;
                     continue;
                 }
 
-                // не value-like и без ':' — приклеиваем только к непустому значению
                 if (last && last.value) {
                     last.value += ' ' + raw;
+                } else if (last) {
+                    last.key += ' ' + raw;
                 }
-                // если last.value пустое — пропускаем строку
             }
 
             return entries;
