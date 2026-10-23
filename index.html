@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг DS-160 — нейтральный бумажный фон</title>
+    <title>Парсинг DS-160</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -75,6 +75,7 @@
 
         .left-panel.parsed .upload-btn { display: none; }
 
+        /* Результаты — без секций, просто список пар ключ/значение */
         .result {
             display: none;
             width: 100%; height: 100%;
@@ -86,50 +87,37 @@
         }
         .left-panel.parsed .result { display: block; }
 
-        .section-block { margin-bottom: 28px; }
-
-        .section-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            color: #6b6b6b;
-            margin-bottom: 6px;
-            border-bottom: 1px solid #d8d2c8;
-            padding-bottom: 4px;
-        }
-
         .rows {
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             row-gap: 0;
         }
 
-        .section-block .row {
+        .row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             column-gap: 20px;
-            grid-column: 1 / -1;
             border-radius: 4px;
             transition: background-color .12s ease;
         }
 
-        .section-block .row:hover {
+        .row:hover {
             background-color: rgba(0, 0, 0, 0.045);
         }
 
-        .section-block .row .key,
-        .section-block .row .val {
+        .row .key,
+        .row .val {
             padding: 2px 4px;
             margin: 0;
             word-break: break-word;
             white-space: pre-wrap;
         }
-        .section-block .row .key { font-weight: bold; }
-        .section-block .row .val { color: #2a2a2a; }
+        .row .key { font-weight: bold; }
+        .row .val { color: #2a2a2a; }
 
         @media (max-width: 700px) {
-            .section-block .row { grid-template-columns: 1fr; }
-            .section-block .row .key { margin-top: 6px; }
+            .row { grid-template-columns: 1fr; }
+            .row .key { margin-top: 6px; }
         }
 
         /* Правая колонка действий */
@@ -144,7 +132,6 @@
         }
         .left-panel.parsed .action-stack { display: flex; }
 
-        /* Квадратные кнопки, крупные надписи, системный шрифт */
         .action-btn {
             width: 56px;
             height: 56px;
@@ -190,7 +177,6 @@
         }
         .action-btn.usv:hover { background-color: #9d4a42; }
 
-        /* SVG-надписи AIS и USV */
         .action-btn .label-svg {
             display: block;
             width: 36px;
@@ -220,14 +206,12 @@
                 </svg>
             </button>
 
-            <!-- AIS как SVG -->
             <button class="action-btn ais" type="button" aria-label="AIS">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">AIS</text>
                 </svg>
             </button>
 
-            <!-- USV как SVG -->
             <button class="action-btn usv" type="button" aria-label="USV">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">USV</text>
@@ -305,114 +289,24 @@
             return DROP_PATTERNS.some(re => re.test(raw));
         }
 
+        /* Разбираем строки по ':' или '?' (в вопросительных полях
+           DS-160 нет двоеточия, но есть вопрос со значением после него) */
         function parseKeyValue(lines) {
             const entries = [];
             for (const raw of lines) {
                 if (!raw) continue;
                 if (shouldDrop(raw)) continue;
 
-                const idx = raw.indexOf(':');
-                if (idx === -1) continue;
+                const m = raw.match(/^(.+?)(?:\s*[:?]\s*)(.*)$/);
+                if (!m) continue;
 
-                const key = raw.slice(0, idx).trim();
-                const value = raw.slice(idx + 1).trim();
+                const key = m[1].trim();
+                const value = m[2].trim();
                 if (!key) continue;
+
                 entries.push({ key, value });
             }
             return entries;
-        }
-
-        const SECTIONS = [
-            { title: 'Personal Information',
-              start: 'Name Provided',
-              end:   'U.S. Taxpayer ID Number' },
-            { title: 'Address and Phone Information',
-              start: 'Home Address',
-              end:   'Have you used additional email addresses' },
-            { title: 'Passport/Travel Document Information',
-              start: 'Passport/Travel Document Type',
-              end:   'Have you ever lost a passport' },
-            { title: 'Travel Information',
-              start: 'Purpose of Trip to the U.S.',
-              end:   'Address where you will stay in the U.S.' },
-            { title: 'Travel Companions Information',
-              start: 'Other Persons Traveling with You',
-              end:   'Other Persons Traveling with You' },
-            { title: 'Previous U.S. Travel Information',
-              start: 'Have you ever been in the U.S.?',
-              end:   'Has anyone ever filed an immigrant petition' },
-            { title: 'U.S. Point of Contact Information',
-              start: 'Contact Person Name in the U.S.',
-              end:   'Email Address' },
-            { title: 'Family Information: Relatives',
-              start: "Father's Surnames",
-              end:   'Do you have any other relatives in the United States' },
-            { title: 'Family Information: Former Spouse(s)',
-              start: 'Number of former spouses',
-              end:   'Country/Region Marriage was Terminated' },
-            { title: 'Present Work Information',
-              start: 'Primary Occupation',
-              end:   'Briefly Describe your Duties' },
-            { title: 'Previous Work Information',
-              start: 'Were you previously employed',
-              end:   'Have you attended any educational institutions' },
-            { title: 'Additional Information',
-              start: 'Do you belong to a clan or tribe',
-              end:   'Have you ever served in, been a member of' },
-            { title: 'Security and Background Information',
-              start: 'Do you have a communicable disease',
-              end:   'Have you attended a public elementary school' },
-            { title: 'Additional Point of Contact Information',
-              start: 'Name(1)',
-              end:   'Email Address' },
-            { title: 'SEVIS Information',
-              start: 'SEVIS ID',
-              end:   'Street Address' },
-            { title: 'Location Information',
-              start: 'Current Location',
-              end:   null }
-        ];
-
-        function keyMatches(key, prefix) {
-            const k = key.toLowerCase();
-            const p = prefix.toLowerCase();
-            if (!k.startsWith(p)) return false;
-            const next = k.charAt(p.length);
-            return next === '' || !/[a-zа-я0-9]/i.test(next);
-        }
-
-        function groupIntoSections(entries) {
-            const sections = [];
-            let current = null;
-            let sectionIndex = -1;
-            let endReached = false;
-
-            for (const entry of entries) {
-                for (let i = sectionIndex + 1; i < SECTIONS.length; i++) {
-                    const sec = SECTIONS[i];
-                    if (keyMatches(entry.key, sec.start)) {
-                        if (current) sections.push(current);
-                        current = { title: sec.title, entries: [] };
-                        sectionIndex = i;
-                        endReached = false;
-                        break;
-                    }
-                }
-
-                if (!current) continue;
-
-                current.entries.push(entry);
-
-                const sec = SECTIONS[sectionIndex];
-                if (sec.end && !endReached && keyMatches(entry.key, sec.end)) {
-                    endReached = true;
-                    sections.push(current);
-                    current = null;
-                }
-            }
-
-            if (current) sections.push(current);
-            return sections;
         }
 
         function renderResult(entries) {
@@ -421,42 +315,28 @@
                 return;
             }
 
-            const sections = groupIntoSections(entries);
             resultEl.innerHTML = '';
 
-            for (const sec of sections) {
-                if (!sec.entries.length) continue;
+            const rows = document.createElement('div');
+            rows.className = 'rows';
 
-                const block = document.createElement('div');
-                block.className = 'section-block';
+            for (const { key, value } of entries) {
+                const row = document.createElement('div');
+                row.className = 'row';
 
-                const title = document.createElement('div');
-                title.className = 'section-title';
-                title.textContent = sec.title;
-                block.appendChild(title);
+                const k = document.createElement('div');
+                k.className = 'key';
+                k.textContent = key;
 
-                const rows = document.createElement('div');
-                rows.className = 'rows';
+                const v = document.createElement('div');
+                v.className = 'val';
+                v.textContent = value || '—';
 
-                for (const { key, value } of sec.entries) {
-                    const row = document.createElement('div');
-                    row.className = 'row';
-
-                    const k = document.createElement('div');
-                    k.className = 'key';
-                    k.textContent = key;
-
-                    const v = document.createElement('div');
-                    v.className = 'val';
-                    v.textContent = value || '—';
-
-                    row.append(k, v);
-                    rows.appendChild(row);
-                }
-
-                block.appendChild(rows);
-                resultEl.appendChild(block);
+                row.append(k, v);
+                rows.appendChild(row);
             }
+
+            resultEl.appendChild(rows);
         }
 
         async function handleFile(file) {
