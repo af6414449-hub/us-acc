@@ -354,50 +354,57 @@
             const cleaned = split
                 .filter(l => l && l !== '—' && !shouldDrop(l));
 
-            console.log('=== CLEANED LINES ===');
-            console.log(cleaned);
-
             const entries = [];
             let last = null;
 
             for (const raw of cleaned) {
-                const m = raw.match(/^(.+?)\s*[:?]\s*(.*)$/);
+                // 1. ':' — точно "Ключ: значение".
+                //    '?' — только если после него есть непустой остаток.
+                let m = raw.match(/^(.+?)\s*:\s*(.*)$/);
+                if (!m) {
+                    const qm = raw.match(/^(.+?)\s*\?\s+(.+)$/);
+                    if (qm) m = qm;
+                }
 
                 if (m) {
                     const key = m[1].trim();
                     const value = m[2].trim();
                     last = { key, value };
                     entries.push(last);
-                    console.log('NEW KEY (with :):', raw, '→', last);
                     continue;
                 }
 
                 if (!entries.length) continue;
 
+                // 2. value-like → значение
                 if (looksLikeValue(raw)) {
                     if (last && !last.value) last.value = raw;
-                    console.log('VALUE:', raw, '→ last:', last);
                     continue;
                 }
 
+                // 3. Строка заканчивается на '?' и последний ключ — вопрос без значения →
+                //    это продолжение вопроса, а не новый вопрос
+                if (/\?$/.test(raw) && last && !last.value && isQuestionKey(last.key)) {
+                    last.key += ' ' + raw;
+                    continue;
+                }
+
+                // 4. Новый вопрос
                 if (looksLikeQuestion(raw)) {
                     last = { key: raw, value: '' };
                     entries.push(last);
-                    console.log('NEW KEY (question):', raw, '→', last);
                     continue;
                 }
 
+                // 5-6. Приклеить к ключу или значению
                 if (last && !last.value) {
                     if (isQuestionKey(last.key) || looksUnfinished(last.key) || /^[a-zа-я]/.test(raw)) {
                         last.key += ' ' + raw;
-                        console.log('APPEND TO KEY:', raw, '→ last:', last);
                     } else {
                         last.value = raw;
-                        console.log('SET VALUE:', raw, '→ last:', last);
                     }
                 } else if (last && last.value) {
                     last.value += ' ' + raw;
-                    console.log('APPEND TO VALUE:', raw, '→ last:', last);
                 }
             }
 
