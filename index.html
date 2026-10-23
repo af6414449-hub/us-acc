@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг DS-160 — нейтральный бумажный фон</title>
+    <title>Парсинг DS-160</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,7 +17,6 @@
             flex-direction: column;
         }
 
-        /* Панель вкладок */
         .tabs-bar {
             display: none;
             align-items: flex-end;
@@ -43,8 +42,8 @@
             color: #1a1a1a;
             cursor: pointer;
             user-select: none;
-            max-width: 260px;
-            min-width: 120px;
+            max-width: 300px;
+            min-width: 100px;
             box-shadow: 0 -1px 3px rgba(0,0,0,.05);
             transition: background-color .15s, height .15s;
             border: 1px solid transparent;
@@ -65,6 +64,15 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             margin-right: 8px;
+        }
+
+        .tab-name-full { display: inline; }
+        .tab-name-short { display: none; }
+
+        @media (max-width: 800px) {
+            .tab-name-full { display: none; }
+            .tab-name-short { display: inline; }
+            .tab { max-width: 200px; }
         }
 
         .tab-close {
@@ -105,7 +113,6 @@
         }
         .tab-add:hover { background-color: #ded9cf; }
 
-        /* Основная область */
         .main-area {
             flex: 1;
             position: relative;
@@ -249,14 +256,6 @@
         }
         .action-btn:active { transform: scale(.97); }
 
-        .action-btn.close {
-            background-color: #2a2a2a;
-            opacity: 1;
-        }
-        .action-btn.close:hover { background-color: #1a1a1a; }
-        .action-btn.close svg { width: 22px; height: 22px; display: block; }
-        .action-btn.close path { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
-
         .action-btn.all,
         .action-btn.ais,
         .action-btn.usv {
@@ -268,7 +267,7 @@
         }
 
         .action-btn.all {
-            background-color: #5a8f5a; /* приглушённый зелёный */
+            background-color: #5a8f5a;
         }
         .action-btn.ais {
             background-color: #5b7a9d;
@@ -302,21 +301,14 @@
     </style>
 </head>
 <body>
-    <!-- Панель вкладок -->
     <div class="tabs-bar" id="tabsBar">
         <div id="tabsContainer" style="display:flex; gap:4px;"></div>
         <button class="tab-add" id="tabAddBtn" type="button" aria-label="Добавить вкладку">+</button>
     </div>
 
-    <!-- Основная область -->
     <div class="main-area">
         <section class="left-panel" id="leftPanel">
             <div class="action-stack" aria-label="Действия">
-                <button class="action-btn close" id="closeBtn" type="button" aria-label="Сбросить текущую вкладку">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
-                    </svg>
-                </button>
                 <button class="action-btn all active" id="allBtn" type="button" aria-label="Все поля">
                     <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <text x="20" y="21">ALL</text>
@@ -355,7 +347,6 @@
         const dropZone      = document.getElementById('dropZone');
         const fileInput     = document.getElementById('fileInput');
         const resultEl      = document.getElementById('result');
-        const closeBtn      = document.getElementById('closeBtn');
         const allBtn        = document.getElementById('allBtn');
         const aisBtn        = document.getElementById('aisBtn');
         const usvBtn        = document.getElementById('usvBtn');
@@ -366,6 +357,7 @@
         let tabs = [];
         let activeTabId = null;
         let nextTabId = 1;
+        let activeFilter = 'all';
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -563,12 +555,20 @@
                 if (cr) homeCountry = cr.value;
             }
 
+            // Извлекаем только страну для Country/Region of Birth
+            let birthCountry = '';
+            const birthVal = get('Country/Region of Birth')?.value;
+            if (birthVal) {
+                const parts = birthVal.split(',');
+                birthCountry = parts[parts.length - 1].trim();
+            }
+
             const fields = [
                 { label: 'Name Provided', val: get('Name Provided')?.value },
                 { label: 'Email Address', val: get('Email Address')?.value },
                 { label: 'Passport/Travel Document Number', val: get('Passport/Travel Document Number')?.value },
                 { label: 'Country/Authority that Issued Passport/Travel Document', val: get('Country/Authority that Issued Passport/Travel Document')?.value },
-                { label: 'Country/Region of Birth', val: get('Country/Region of Birth')?.value },
+                { label: 'Country/Region of Birth', val: birthCountry },
                 { label: 'Country of Home Address', val: homeCountry },
                 { label: 'Visa Category', val: get('Specify')?.value },
                 { label: 'Date of Birth', val: get('Date of Birth')?.value },
@@ -611,30 +611,25 @@
             resultEl.appendChild(rows);
         }
 
-        function setActiveButton(btn) {
+        function setActiveButton(filter) {
+            activeFilter = filter;
             [allBtn, aisBtn, usvBtn].forEach(b => b.classList.remove('active'));
-            if (btn) btn.classList.add('active');
+            if (filter === 'all') allBtn.classList.add('active');
+            if (filter === 'ais') aisBtn.classList.add('active');
+            if (filter === 'usv') usvBtn.classList.add('active');
         }
 
-        function showAll() {
-            setActiveButton(allBtn);
+        function renderActive() {
             const tab = tabs.find(t => t.id === activeTabId);
             if (!tab || !tab.entries) return;
-            renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
-        }
 
-        function showAis() {
-            setActiveButton(aisBtn);
-            const tab = tabs.find(t => t.id === activeTabId);
-            if (!tab || !tab.entries) return;
-            renderResult(applyAisFilter(tab.entries));
-        }
-
-        function showUsv() {
-            setActiveButton(usvBtn);
-            const tab = tabs.find(t => t.id === activeTabId);
-            if (!tab || !tab.entries) return;
-            renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
+            if (activeFilter === 'all') {
+                renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
+            } else if (activeFilter === 'ais') {
+                renderResult(applyAisFilter(tab.entries));
+            } else if (activeFilter === 'usv') {
+                renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
+            }
         }
 
         function updateTabsUi() {
@@ -646,7 +641,10 @@
 
                 const name = document.createElement('span');
                 name.className = 'tab-name';
-                name.textContent = tab.title;
+                name.innerHTML = `
+                    <span class="tab-name-full">${tab.fullTitle || tab.title}</span>
+                    <span class="tab-name-short">${tab.shortTitle || tab.title}</span>
+                `;
                 el.appendChild(name);
 
                 const close = document.createElement('button');
@@ -673,11 +671,9 @@
 
             leftPanel.classList.toggle('parsed', !!tab.entries && tab.entries.length > 0);
             if (tab.entries && tab.entries.length > 0) {
-                // По умолчанию ALL при переключении
-                showAll();
+                renderActive();
             } else {
                 resultEl.innerHTML = '';
-                // Если пустая вкладка, кнопка загрузки видна
                 dropZone.classList.remove('loaded');
             }
         }
@@ -689,7 +685,6 @@
 
             if (activeTabId === id) {
                 if (tabs.length > 0) {
-                    // Выбираем соседнюю
                     const next = tabs[Math.max(0, idx - 1)];
                     switchTab(next.id);
                 } else {
@@ -707,6 +702,8 @@
             const newTab = {
                 id: nextTabId++,
                 title: file ? file.name.replace(/\.pdf$/i, '') : 'Новая',
+                fullTitle: file ? file.name.replace(/\.pdf$/i, '') : 'Новая',
+                shortTitle: file ? file.name.replace(/\.pdf$/i, '') : 'Новая',
                 entries: null,
                 file: file || null
             };
@@ -732,17 +729,26 @@
                 tab.entries = entries;
                 tab.file = file;
 
-                // Обновляем имя вкладки
                 const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase())?.value;
                 const nameProvided = get('Name Provided') || file.name.replace(/\.pdf$/i, '');
                 const specify = get('Specify');
-                tab.title = specify ? `${nameProvided} (${specify})` : nameProvided;
+
+                let cleanSpecify = specify ? specify.replace(/[()]/g, '').replace(/STUDENT\s*/gi, '').trim() : '';
+
+                if (nameProvided && cleanSpecify) {
+                    tab.fullTitle = `${nameProvided} (${cleanSpecify})`;
+                    const lastName = nameProvided.split(',')[0].trim();
+                    tab.shortTitle = `${lastName} (${cleanSpecify})`;
+                } else {
+                    tab.fullTitle = nameProvided;
+                    tab.shortTitle = nameProvided.split(',')[0].trim();
+                }
 
                 updateTabsUi();
 
                 if (entries.length) {
                     leftPanel.classList.add('parsed');
-                    showAll();
+                    renderActive();
                 } else {
                     leftPanel.classList.remove('parsed');
                 }
@@ -752,7 +758,6 @@
             }
         }
 
-        // События
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -761,7 +766,6 @@
                 }
                 loadFileIntoActiveTab(file);
             }
-            // Сбрасываем value, чтобы можно было загрузить тот же файл ещё раз
             fileInput.value = '';
         });
 
@@ -787,22 +791,18 @@
             }
         });
 
-        closeBtn.addEventListener('click', () => {
-            const tab = tabs.find(t => t.id === activeTabId);
-            if (!tab) return;
-            tab.entries = null;
-            tab.title = 'Новая';
-            tab.file = null;
-            leftPanel.classList.remove('parsed');
-            dropZone.classList.remove('loaded');
-            fileInput.value = '';
-            resultEl.innerHTML = '';
-            updateTabsUi();
+        allBtn.addEventListener('click', () => {
+            setActiveButton('all');
+            renderActive();
         });
-
-        allBtn.addEventListener('click', () => { if (activeTabId) showAll(); });
-        aisBtn.addEventListener('click', () => { if (activeTabId) showAis(); });
-        usvBtn.addEventListener('click', () => { if (activeTabId) showUsv(); });
+        aisBtn.addEventListener('click', () => {
+            setActiveButton('ais');
+            renderActive();
+        });
+        usvBtn.addEventListener('click', () => {
+            setActiveButton('usv');
+            renderActive();
+        });
 
         tabAddBtn.addEventListener('click', () => {
             addTab(null);
@@ -810,13 +810,11 @@
             resultEl.innerHTML = '';
             dropZone.classList.remove('loaded');
             fileInput.value = '';
-            setActiveButton(allBtn);
         });
 
-        // Инициализация: одна пустая вкладка
         addTab(null);
         leftPanel.classList.remove('parsed');
-        setActiveButton(allBtn);
+        setActiveButton('all');
     </script>
 </body>
 </html>
