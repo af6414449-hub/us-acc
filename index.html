@@ -18,8 +18,9 @@
             flex-direction: column;
         }
 
+        /* Панель вкладок (видна всегда) */
         .tabs-bar {
-            display: none;
+            display: flex;
             align-items: flex-end;
             padding: 0 20px;
             gap: 4px;
@@ -28,7 +29,6 @@
             flex-shrink: 0;
             margin-top: 8px;
         }
-        .tabs-bar.visible { display: flex; }
 
         .tab {
             position: relative;
@@ -113,6 +113,86 @@
             box-shadow: 0 -1px 3px rgba(0,0,0,.05);
         }
         .tab-add:hover { background-color: #ded9cf; }
+
+        /* Кнопка меню (тёмно-синяя) */
+        .menu-btn {
+            margin-left: auto; /* прижимает к правому краю */
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            background-color: #1a3a5c;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background-color .15s;
+            box-shadow: 0 -1px 3px rgba(0,0,0,.05);
+            color: #fff;
+        }
+        .menu-btn:hover { background-color: #142e48; }
+        .menu-btn svg { width: 20px; height: 20px; display: block; }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.visible { display: flex; }
+
+        .modal-content {
+            background-color: #f9f6f0;
+            border-radius: 16px;
+            padding: 24px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #c62828;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color .15s;
+        }
+        .modal-close:hover { background-color: rgba(198, 40, 40, 0.1); }
+        .modal-close svg { width: 16px; height: 16px; }
+        .modal-close path { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+
+        .modal-link {
+            display: block;
+            padding: 12px 16px;
+            background-color: #e8e4dc;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color .15s;
+        }
+        .modal-link:hover { background-color: #ded9cf; }
 
         .main-area {
             flex: 1;
@@ -329,9 +409,15 @@
     </style>
 </head>
 <body>
-    <div class="tabs-bar" id="tabsBar">
+    <!-- Панель вкладок (видна всегда) -->
+    <div class="tabs-bar">
         <div id="tabsContainer" style="display:flex; gap:4px;"></div>
         <button class="tab-add" id="tabAddBtn" type="button" aria-label="Добавить вкладку">+</button>
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="Меню">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </button>
     </div>
 
     <div class="main-area">
@@ -367,6 +453,22 @@
         </section>
     </div>
 
+    <!-- Модальное окно -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <button class="modal-close" id="modalClose" type="button" aria-label="Закрыть">
+                <svg viewBox="0 0 24 24"><path d="M6 6 L18 18 M18 6 L6 18" fill="none"/></svg>
+            </button>
+            <a class="modal-link" href="https://ais.usvisa-info.com/" target="_blank">AIS</a>
+            <a class="modal-link" href="https://www.usvisascheduling.com/" target="_blank">Usvisascheduling</a>
+            <a class="modal-link" href="https://www.usvisaappt.com/visaapplicantui/login" target="_blank">AVITS</a>
+            <a class="modal-link" href="https://evisaforms.state.gov/Instructions/SchedulingSystem.asp" target="_blank">Evisa</a>
+            <a class="modal-link" href="https://www.ustraveldocs.com/" target="_blank">Ustraveldocs</a>
+            <a class="modal-link" href="https://travel.state.gov/content/travel/en/us-visas/visa-information-resources/wait-times.html" target="_blank">Wait Times</a>
+            <a class="modal-link" href="https://ceac.state.gov/ceac/" target="_blank">CEAC</a>
+        </div>
+    </div>
+
     <script src="./libs/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.min.js';
@@ -378,9 +480,11 @@
         const allBtn        = document.getElementById('allBtn');
         const aisBtn        = document.getElementById('aisBtn');
         const usvBtn        = document.getElementById('usvBtn');
-        const tabsBar       = document.getElementById('tabsBar');
         const tabsContainer = document.getElementById('tabsContainer');
         const tabAddBtn     = document.getElementById('tabAddBtn');
+        const menuBtn       = document.getElementById('menuBtn');
+        const modalOverlay  = document.getElementById('modalOverlay');
+        const modalClose    = document.getElementById('modalClose');
 
         let tabs = [];
         let activeTabId = null;
@@ -739,44 +843,51 @@
             if (sevisId) result.push({ label: 'SEVIS ID', val: sevisId });
             const school = get('Name of School')?.value;
             if (school) result.push({ label: 'Name of School', val: school });
-            const schoolAddress = get('Street Address')?.value;
+
+            // Street Address для SEVIS — берём после SEVIS ID
+            const sevisIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'sevis id');
+            let schoolAddress = '';
+            if (sevisIdx !== -1) {
+                const addrEntry = entries.slice(sevisIdx).find(e => e.key.trim().toLowerCase() === 'street address');
+                if (addrEntry) schoolAddress = addrEntry.value;
+            }
             if (schoolAddress) result.push({ label: 'Street Address', val: schoolAddress });
 
             result.push({ section: 'Сопровождающие:' });
-            const traveling = get('Other Persons Traveling with You')?.value;
-            if (traveling) result.push({ label: 'Persons Traveling with You', val: traveling });
-
-            // Ищем Name(N) и Relationship to You после Other Persons Traveling with You
             const travelIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'other persons traveling with you');
-            
             if (travelIdx !== -1) {
-                const afterTravel = entries.slice(travelIdx);
-                const nameRegex = /^Name\s*\(\d+\)$/i;
-                
-                for (let i = 0; i < afterTravel.length; i++) {
-                    const entry = afterTravel[i];
-                    if (nameRegex.test(entry.key)) {
-                        result.push({ label: entry.key, val: entry.value });
-                        
-                        for (let j = i + 1; j < afterTravel.length; j++) {
-                            if (afterTravel[j].key.trim().toLowerCase() === 'relationship to you') {
-                                result.push({ label: 'Relationship to You', val: afterTravel[j].value });
-                                break;
-                            }
-                            if (nameRegex.test(afterTravel[j].key)) break;
+                const traveling = entries[travelIdx].value;
+                result.push({ label: 'Persons Traveling with You', val: traveling });
+
+                if (traveling && traveling.toUpperCase() === 'YES') {
+                    const endMarkers = [
+                        'have you ever been in the u.s.',
+                        'date arrived (1)',
+                        'length of stay',
+                        'do you or did you ever hold a u.s. driver\'s license'
+                    ];
+                    let endIdx = entries.length;
+                    for (let i = travelIdx + 1; i < entries.length; i++) {
+                        const k = entries[i].key.trim().toLowerCase();
+                        if (endMarkers.some(m => k.startsWith(m))) {
+                            endIdx = i;
+                            break;
                         }
                     }
-                }
-            }
 
-            // Для поля про communicable disease — если ответа нет, ставим прочерк
-            const commDiseaseKey = 'do you have a communicable disease of public health significance';
-            const commEntry = entries.find(e => e.key.trim().toLowerCase().startsWith(commDiseaseKey));
-            if (commEntry) {
-                // Проверяем, есть ли значение
-                if (!commEntry.value || commEntry.value === '' || commEntry.value === '—') {
-                    // Ищем в секции Security and Background Information
-                    // Если ответ не найден (как в нашем случае с PDF), ставим прочерк
+                    const nameRegex = /^Name\s*\(\d+\)$/i;
+                    for (let i = travelIdx + 1; i < endIdx; i++) {
+                        if (nameRegex.test(entries[i].key)) {
+                            result.push({ label: entries[i].key, val: entries[i].value });
+                            for (let j = i + 1; j < endIdx; j++) {
+                                if (entries[j].key.trim().toLowerCase() === 'relationship to you') {
+                                    result.push({ label: 'Relationship to You', val: entries[j].value });
+                                    break;
+                                }
+                                if (nameRegex.test(entries[j].key)) break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -896,7 +1007,6 @@
 
                 tabsContainer.appendChild(el);
             });
-            tabsBar.classList.toggle('visible', tabs.length > 0);
         }
 
         function switchTab(id) {
@@ -1054,6 +1164,19 @@
             resultEl.innerHTML = '';
             dropZone.classList.remove('loaded');
             fileInput.value = '';
+        });
+
+        // Модальное окно
+        menuBtn.addEventListener('click', () => {
+            modalOverlay.classList.add('visible');
+        });
+        modalClose.addEventListener('click', () => {
+            modalOverlay.classList.remove('visible');
+        });
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.classList.remove('visible');
+            }
         });
 
         addTab(null);
