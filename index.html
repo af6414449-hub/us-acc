@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг DS-160 — нейтральный бумажный фон</title>
+    <title>Парсинг DS-160</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -251,8 +251,26 @@
             return pages;
         }
 
-        /* Только служебные шапки, заголовки секций и общие обрывки.
-           Обрывки вопросов сюда НЕ входят — они склеиваются с ключом. */
+        /* Разрезаем строку там, где внутри неё начинается новый вопрос.
+           Признаки вопроса: "? " + заглавная, или вопросительные слова
+           с заглавной буквы не в начале строки. */
+        const QUESTION_START = /(?<=[\s?])(Do|Does|Did|Are|Is|Was|Were|Have|Has|Had|Will|Would|Can|Could|Should|May|Might|Must)\s/;
+
+        function splitMixedLine(line) {
+            // Ищем первое вхождение вопросительного слова не в начале строки
+            const m = line.match(QUESTION_START);
+            if (!m || m.index === 0) return [line];
+
+            // Проверим, что перед найденным словом есть что-то осмысленное
+            const head = line.slice(0, m.index).trim();
+            const tail = line.slice(m.index).trim();
+            if (!head || !tail) return [line];
+
+            // Рекурсивно режем хвост — вдруг там ещё вопросы
+            const rest = splitMixedLine(tail);
+            return [head, ...rest];
+        }
+
         const DROP_PATTERNS = [
             /^Application ID/i,
             /^Online Nonimmigrant Visa Application/i,
@@ -305,8 +323,17 @@
         }
 
         function parseKeyValue(lines) {
-            const cleaned = lines
-                .map(l => l.trim())
+            // Сначала режем смешанные строки (ответ + следующий вопрос)
+            const split = [];
+            for (const l of lines) {
+                const parts = splitMixedLine(l.trim());
+                for (const p of parts) {
+                    const t = p.trim();
+                    if (t) split.push(t);
+                }
+            }
+
+            const cleaned = split
                 .filter(l => l && l !== '—' && !shouldDrop(l));
 
             const entries = [];
