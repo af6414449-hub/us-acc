@@ -98,30 +98,16 @@
             padding-bottom: 4px;
         }
 
-        /* Сетка двух колонок */
-        .section-block dl {
+        .rows {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            column-gap: 20px;
+            grid-template-columns: minmax(0, 1fr);
             row-gap: 0;
-            margin: 0;
         }
-
-        /* Пары ключ/значение в двух колонках —
-           каждая строка выделяется при наведении.
-           Для этого ключ и значение обёрнуты в общий невидимый
-           слой-подсветку через псевдоэлемент? Нет — оборачиваем
-           пару в отдельный ряд нельзя в dl+grid без изменения разметки.
-           Поэтому делаем два <div class="row"> внутри dl через CSS grid:
-           используем display: contents у dt/dd и стилизуем ряды.
-           Проще: переключаемся на div-структуру .row > .key + .val.
-        */
 
         .section-block .row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             column-gap: 20px;
-            /* строка занимает обе колонки родителя */
             grid-column: 1 / -1;
             border-radius: 4px;
             transition: background-color .12s ease;
@@ -131,64 +117,88 @@
             background-color: rgba(0, 0, 0, 0.045);
         }
 
-        .section-block .row .key {
-            font-weight: bold;
-            padding: 2px 4px;
-            margin: 0;
-            word-break: break-word;
-            white-space: pre-wrap;
-        }
-
+        .section-block .row .key,
         .section-block .row .val {
             padding: 2px 4px;
             margin: 0;
-            color: #2a2a2a;
             word-break: break-word;
             white-space: pre-wrap;
         }
-
-        /* Сетка-обёртка для рядов */
-        .rows {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr);
-            row-gap: 0;
-        }
+        .section-block .row .key { font-weight: bold; }
+        .section-block .row .val { color: #2a2a2a; }
 
         @media (max-width: 700px) {
-            .section-block .row {
-                grid-template-columns: 1fr;
-            }
+            .section-block .row { grid-template-columns: 1fr; }
             .section-block .row .key { margin-top: 6px; }
         }
 
-        .close-btn {
+        /* Правая колонка действий */
+        .action-stack {
             display: none;
             position: absolute;
             top: 18px;
             right: 18px;
-            width: 36px;
-            height: 36px;
-            padding: 0;
-            background: none;
-            border: none;
-            cursor: pointer;
+            flex-direction: column;
+            gap: 10px;
             z-index: 10;
-            color: #c62828;
-            line-height: 1;
         }
-        .close-btn svg { width: 100%; height: 100%; display: block; }
-        .close-btn:hover { color: #8e0000; }
-        .left-panel.parsed .close-btn { display: block; }
+        .left-panel.parsed .action-stack { display: flex; }
+
+        .action-btn {
+            width: 120px;
+            height: 44px;
+            border: none;
+            border-radius: 10px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            letter-spacing: .02em;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: filter .15s ease, transform .1s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,.12);
+        }
+        .action-btn:hover { filter: brightness(1.08); }
+        .action-btn:active { transform: scale(.98); }
+
+        .action-btn.close {
+            background-color: #c62828;
+            padding: 0;
+        }
+        .action-btn.close:hover { background-color: #a82020; }
+        .action-btn.close svg {
+            width: 20px; height: 20px; display: block;
+        }
+        .action-btn.close path {
+            stroke: #fff;
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .action-btn.ais {
+            background-color: #1565c0;
+        }
+
+        /* Надпись изменена на USV */
+        .action-btn.usv {
+            background-color: #c62828;
+        }
     </style>
 </head>
 <body>
     <section class="left-panel" id="leftPanel">
-        <button class="close-btn" id="closeBtn" type="button" aria-label="Сбросить">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M6 6 L18 18 M18 6 L6 18"
-                      stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-            </svg>
-        </button>
+        <div class="action-stack" aria-label="Действия">
+            <button class="action-btn close" id="closeBtn" type="button" aria-label="Сбросить">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
+                </svg>
+            </button>
+            <button class="action-btn ais" type="button">AIS</button>
+            <button class="action-btn usv" type="button">USV</button>
+        </div>
 
         <button class="upload-btn" id="dropZone" type="button"
                 aria-label="Загрузить PDF: перетащите файл или нажмите для выбора">
