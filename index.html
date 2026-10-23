@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузка и парсинг PDF — нейтральный бумажный фон</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background-color: #f9f6f0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            font-family: Georgia, 'Times New Roman', serif;
+            overflow: hidden;
+        }
+
+        .divider {
+            position: fixed; top: 0; bottom: 0; right: 33.333%;
+            width: 1px; background-color: #000; z-index: 5;
+        }
+
+        .left-panel {
+            position: absolute; top: 0; left: 0;
+            width: 66.666%; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* Квадратная область со скруглёнными углами */
+        .upload-btn {
+            position: relative;
+            width: 150px; height: 150px;
+            border: none;
+            border-radius: 20px;
+            background-color: #e8e4dc;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            transition: background-color .2s ease, transform .15s ease;
+        }
+        .upload-btn:hover { background-color: #ded9cf; }
+
+        .upload-btn input[type="file"] {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            opacity: 0; cursor: pointer;
+        }
+
+        /* Пунктир вдоль скруглённого контура */
+        .upload-btn::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' preserveAspectRatio='none'%3E%3Crect x='1' y='1' width='98' height='98' rx='12' ry='12' fill='none' stroke='%236b6b6b' stroke-width='1.6' stroke-dasharray='2 12' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-size: 100% 100%;
+            transition: opacity .2s;
+        }
+
+        .upload-icon {
+            width: 56px; height: 56px; display: block;
+            pointer-events: none;
+            transition: transform .15s ease;
+        }
+        .upload-btn:hover .upload-icon { transform: translateY(-3px); }
+
+        .upload-icon .ink {
+            stroke: #2a2a2a;
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: stroke .2s;
+        }
+
+        /* Статусы */
+        .upload-btn.loaded { background-color: #d6e8d6; }
+        .upload-btn.loaded .ink { stroke: #2e7d32; }
+        .upload-btn.loaded::before { opacity: .35; }
+        .upload-btn.dragover { background-color: #cfd8cf; transform: scale(1.03); }
+
+        /* Индикатор загрузки/парсинга */
+        .status {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 66.666%;
+            text-align: center;
+            font-size: 14px;
+            color: #6b6b6b;
+            font-style: italic;
+            pointer-events: none;
+        }
+        .status.error { color: #b00020; }
+    </style>
+</head>
+<body>
+    <div class="divider" aria-hidden="true"></div>
+
+    <section class="left-panel">
+        <button class="upload-btn" id="dropZone" type="button"
+                aria-label="Загрузить PDF: перетащите файл или нажмите для выбора">
+            <input type="file" id="fileInput" accept="application/pdf,.pdf" aria-hidden="true">
+            <svg class="upload-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path class="ink" d="M60 82 V 34"/>
+                <path class="ink" d="M38 56 L 60 34 L 82 56"/>
+            </svg>
+        </button>
+    </section>
+
+    <div class="status" id="status" aria-live="polite"></div>
+
+    <!-- PDF.js — файлы лежат в корне рядом с index.html -->
+    <script src="./pdf.min.js"></script>
+
+    <script>
+        // Указываем путь к воркеру (в корне)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = './pdf.worker.min.js';
+
+        const dropZone  = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const statusEl  = document.getElementById('status');
+
+        function setStatus(text, isError = false) {
+            statusEl.textContent = text;
+            statusEl.classList.toggle('error', isError);
+        }
+
+        function isPdf(file) {
+            return file.type === 'application/pdf' ||
+                   file.name.toLowerCase().endsWith('.pdf');
+        }
+
+        async function extractTextFromPdf(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n';
+            }
+            return fullText;
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+
+            if (!isPdf(file)) {
+                setStatus('Это не PDF-файл', true);
+                dropZone.classList.remove('loaded');
+                return;
+            }
+
+            dropZone.classList.add('loaded');
+            setStatus('Читаю PDF…');
+
+            try {
+                const text = await extractTextFromPdf(file);
+                console.log('Извлечённый текст:\n', text);
+
+                const chars = text.replace(/\s+/g, ' ').trim().length;
+                if (chars === 0) {
+                    setStatus('Текст не найден — возможно, это скан (нужен OCR)');
+                } else {
+                    setStatus(`Готово: извлечено ${chars} символов (см. консоль)`);
+                }
+            } catch (err) {
+                console.error('Ошибка парсинга PDF:', err);
+                setStatus('Ошибка при чтении PDF: ' + err.message, true);
+                dropZone.classList.remove('loaded');
+            }
+        }
+
+        // Выбор файла через диалог
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        ['dragenter', 'dragover'].forEach(evt =>
+            dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('dragover');
+            })
+        );
+
+        ['dragleave', 'drop'].forEach(evt =>
+            dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('dragover');
+            })
+        );
+
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer?.files;
+            if (files && files.length) {
+                try {
+                    const dt = new DataTransfer();
+                    dt.items.add(files[0]);
+                    fileInput.files = dt.files;
+                } catch (_) { /* старые браузеры */ }
+                handleFile(files[0]);
+            }
+        });
+    </script>
+</body>
+</html>
