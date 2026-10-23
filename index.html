@@ -255,8 +255,6 @@
         const VALUE_TOKEN = /\b(YES|NO|DOES NOT APPLY|N\/A|DO NOT KNOW)\b/;
         const QUESTION_WORD = /\b(Do|Does|Did|Are|Is|Was|Were|Have|Has|Had|Will|Would|Can|Could|Should|May|Might|Must)\b/;
 
-        /* Режем строку по первой границе: value-токен или вопросительное слово,
-           перед которыми есть непустой кусок. Рекурсивно. */
         function splitMixedLine(line) {
             const valueMatch = VALUE_TOKEN.exec(line);
             const questionMatch = QUESTION_WORD.exec(line);
@@ -329,8 +327,19 @@
             return false;
         }
 
+        function looksLikeQuestion(str) {
+            return /^(Do|Does|Did|Are|Is|Was|Were|Have|Has|Had|Will|Would|Can|Could|Should|May|Might|Must)\b/.test(str)
+                || /\?$/.test(str);
+        }
+
+        /* Признак незавершённого ключа (оборван на союз/предлог/знак) */
+        function looksUnfinished(str) {
+            return /[,;:\-–—]$/.test(str) ||
+                   /\b(and|or|of|in|on|at|to|for|with|the|a|an|your|their|his|her|its|this|that|these|those|any|other|than|as|by|from|is|are|was|were|be|been|being|have|has|had|do|does|did|will|would|can|could|should|may|might|must|not|no)$/i.test(str);
+        }
+
         function parseKeyValue(lines) {
-            // Сначала режем смешанные строки (ответ + следующий вопрос)
+            // Режем смешанные строки (ответ + следующий вопрос)
             const split = [];
             for (const l of lines) {
                 const parts = splitMixedLine(l.trim());
@@ -364,10 +373,20 @@
                     continue;
                 }
 
-                if (last && last.value) {
+                if (looksLikeQuestion(raw)) {
+                    last = { key: raw, value: '' };
+                    entries.push(last);
+                    continue;
+                }
+
+                if (last && !last.value) {
+                    if (looksUnfinished(last.key)) {
+                        last.key += ' ' + raw;
+                    } else {
+                        last.value = raw;
+                    }
+                } else if (last && last.value) {
                     last.value += ' ' + raw;
-                } else if (last) {
-                    last.key += ' ' + raw;
                 }
             }
 
