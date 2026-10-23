@@ -15,14 +15,10 @@
             overflow: hidden;
         }
 
-        .divider {
-            position: fixed; top: 0; bottom: 0; right: 33.333%;
-            width: 1px; background-color: #000; z-index: 5;
-        }
-
+        /* Единственная область — на всю ширину */
         .left-panel {
             position: absolute; top: 0; left: 0;
-            width: 66.666%; height: 100vh;
+            width: 100%; height: 100vh;
             display: flex; align-items: center; justify-content: center;
             overflow: hidden;
         }
@@ -150,8 +146,6 @@
     </style>
 </head>
 <body>
-    <div class="divider" aria-hidden="true"></div>
-
     <section class="left-panel" id="leftPanel">
         <button class="close-btn" id="closeBtn" type="button" aria-label="Сбросить">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -181,8 +175,6 @@
         const fileInput = document.getElementById('fileInput');
         const resultEl  = document.getElementById('result');
         const closeBtn  = document.getElementById('closeBtn');
-
-        /* ---------- Извлечение текста ---------- */
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -216,8 +208,6 @@
             return pages;
         }
 
-        /* ---------- Фильтрация мусора ---------- */
-
         const DROP_PATTERNS = [
             /^Application ID/i,
             /^Online Nonimmigrant Visa Application/i,
@@ -233,8 +223,6 @@
         function shouldDrop(raw) {
             return DROP_PATTERNS.some(re => re.test(raw));
         }
-
-        /* ---------- Разбор "Ключ: Значение" ---------- */
 
         function parseKeyValue(lines) {
             const entries = [];
@@ -253,113 +241,65 @@
             return entries;
         }
 
-        /* ---------- Секции ----------
-           Каждая секция: { title, start, end }
-           start — ключ, с которого начинается секция;
-           end   — ключ, на котором (включительно) секция заканчивается.
-           Сравнение — по префиксу ключа, регистронезависимо.
-        */
-
         const SECTIONS = [
-            {
-                title: 'Personal Information',
-                start: 'Name Provided',
-                end:   'U.S. Taxpayer ID Number'
-            },
-            {
-                title: 'Address and Phone Information',
-                start: 'Home Address',
-                end:   'Have you used additional email addresses'
-            },
-            {
-                title: 'Passport/Travel Document Information',
-                start: 'Passport/Travel Document Type',
-                end:   'Have you ever lost a passport'
-            },
-            {
-                title: 'Travel Information',
-                start: 'Purpose of Trip to the U.S.',
-                end:   'Address where you will stay in the U.S.'
-            },
-            {
-                title: 'Travel Companions Information',
-                start: 'Other Persons Traveling with You',
-                end:   'Other Persons Traveling with You'
-            },
-            {
-                title: 'Previous U.S. Travel Information',
-                start: 'Have you ever been in the U.S.?',
-                end:   'Has anyone ever filed an immigrant petition'
-            },
-            {
-                title: 'U.S. Point of Contact Information',
-                start: 'Contact Person Name in the U.S.',
-                end:   'Email Address'
-            },
-            {
-                title: 'Family Information: Relatives',
-                start: "Father's Surnames",
-                end:   'Do you have any other relatives in the United States'
-            },
-            {
-                title: 'Family Information: Former Spouse(s)',
-                start: 'Number of former spouses',
-                end:   'Country/Region Marriage was Terminated'
-            },
-            {
-                title: 'Present Work Information',
-                start: 'Primary Occupation',
-                end:   'Briefly Describe your Duties'
-            },
-            {
-                title: 'Previous Work Information',
-                start: 'Were you previously employed',
-                end:   'Have you attended any educational institutions'
-            },
-            {
-                title: 'Additional Information',
-                start: 'Do you belong to a clan or tribe',
-                end:   'Have you ever served in, been a member of'
-            },
-            {
-                title: 'Security and Background Information',
-                start: 'Do you have a communicable disease',
-                end:   'Have you attended a public elementary school'
-            },
-            {
-                title: 'Additional Point of Contact Information',
-                start: 'Name(1)',
-                end:   'Email Address'
-            },
-            {
-                title: 'SEVIS Information',
-                start: 'SEVIS ID',
-                end:   'Street Address'
-            },
-            {
-                title: 'Location Information',
-                start: 'Current Location',
-                end:   null            // до конца — все оставшиеся поля
-            }
+            { title: 'Personal Information',
+              start: 'Name Provided',
+              end:   'U.S. Taxpayer ID Number' },
+            { title: 'Address and Phone Information',
+              start: 'Home Address',
+              end:   'Have you used additional email addresses' },
+            { title: 'Passport/Travel Document Information',
+              start: 'Passport/Travel Document Type',
+              end:   'Have you ever lost a passport' },
+            { title: 'Travel Information',
+              start: 'Purpose of Trip to the U.S.',
+              end:   'Address where you will stay in the U.S.' },
+            { title: 'Travel Companions Information',
+              start: 'Other Persons Traveling with You',
+              end:   'Other Persons Traveling with You' },
+            { title: 'Previous U.S. Travel Information',
+              start: 'Have you ever been in the U.S.?',
+              end:   'Has anyone ever filed an immigrant petition' },
+            { title: 'U.S. Point of Contact Information',
+              start: 'Contact Person Name in the U.S.',
+              end:   'Email Address' },
+            { title: 'Family Information: Relatives',
+              start: "Father's Surnames",
+              end:   'Do you have any other relatives in the United States' },
+            { title: 'Family Information: Former Spouse(s)',
+              start: 'Number of former spouses',
+              end:   'Country/Region Marriage was Terminated' },
+            { title: 'Present Work Information',
+              start: 'Primary Occupation',
+              end:   'Briefly Describe your Duties' },
+            { title: 'Previous Work Information',
+              start: 'Were you previously employed',
+              end:   'Have you attended any educational institutions' },
+            { title: 'Additional Information',
+              start: 'Do you belong to a clan or tribe',
+              end:   'Have you ever served in, been a member of' },
+            { title: 'Security and Background Information',
+              start: 'Do you have a communicable disease',
+              end:   'Have you attended a public elementary school' },
+            { title: 'Additional Point of Contact Information',
+              start: 'Name(1)',
+              end:   'Email Address' },
+            { title: 'SEVIS Information',
+              start: 'SEVIS ID',
+              end:   'Street Address' },
+            { title: 'Location Information',
+              start: 'Current Location',
+              end:   null }
         ];
 
-        /* Проверка: ключ начинается с заданного текста (без учёта регистра) */
-        function keyStarts(key, prefix) {
-            return key.toLowerCase().startsWith(prefix.toLowerCase());
-        }
-
-        /* Проверка: ключ ровно совпадает или начинается так, чтобы не зацепить лишнее */
         function keyMatches(key, prefix) {
             const k = key.toLowerCase();
             const p = prefix.toLowerCase();
             if (!k.startsWith(p)) return false;
-            // чтобы "Name Provided" не совпал с "Name Provided Xyz",
-            // но "Name(1)" совпал с "Name(1)"
             const next = k.charAt(p.length);
             return next === '' || !/[a-zа-я0-9]/i.test(next);
         }
 
-        /* Разбиение списка entries на секции */
         function groupIntoSections(entries) {
             const sections = [];
             let current = null;
@@ -367,11 +307,9 @@
             let endReached = false;
 
             for (const entry of entries) {
-                // Начинаем новую секцию, если ключ совпадает со start следующей секции
                 for (let i = sectionIndex + 1; i < SECTIONS.length; i++) {
                     const sec = SECTIONS[i];
                     if (keyMatches(entry.key, sec.start)) {
-                        // если текущая секция уже была — закрываем
                         if (current) sections.push(current);
                         current = { title: sec.title, entries: [] };
                         sectionIndex = i;
@@ -380,14 +318,10 @@
                     }
                 }
 
-                if (!current) {
-                    // поля до первой известной секции — пропускаем
-                    continue;
-                }
+                if (!current) continue;
 
                 current.entries.push(entry);
 
-                // Проверяем, не закончилась ли текущая секция
                 const sec = SECTIONS[sectionIndex];
                 if (sec.end && !endReached && keyMatches(entry.key, sec.end)) {
                     endReached = true;
@@ -399,8 +333,6 @@
             if (current) sections.push(current);
             return sections;
         }
-
-        /* ---------- Рендер ---------- */
 
         function renderResult(entries) {
             if (!entries.length) {
@@ -435,8 +367,6 @@
             }
         }
 
-        /* ---------- Обработка файла ---------- */
-
         async function handleFile(file) {
             if (!file || !isPdf(file)) return;
 
@@ -465,8 +395,6 @@
             fileInput.value = '';
             resultEl.innerHTML = '';
         }
-
-        /* ---------- События ---------- */
 
         fileInput.addEventListener('change', (e) => {
             handleFile(e.target.files[0]);
