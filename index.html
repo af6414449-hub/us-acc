@@ -185,12 +185,12 @@
                     <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
                 </svg>
             </button>
-            <button class="action-btn ais" type="button" aria-label="AIS">
+            <button class="action-btn ais" id="aisBtn" type="button" aria-label="AIS">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">AIS</text>
                 </svg>
             </button>
-            <button class="action-btn usv" type="button" aria-label="USV">
+            <button class="action-btn usv" id="usvBtn" type="button" aria-label="USV">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">USV</text>
                 </svg>
@@ -218,6 +218,10 @@
         const fileInput = document.getElementById('fileInput');
         const resultEl  = document.getElementById('result');
         const closeBtn  = document.getElementById('closeBtn');
+        const aisBtn    = document.getElementById('aisBtn');
+        const usvBtn    = document.getElementById('usvBtn');
+
+        let parsedEntries = [];
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -358,8 +362,6 @@
             let last = null;
 
             for (const raw of cleaned) {
-                // 1. ':' — точно "Ключ: значение".
-                //    '?' — только если после него есть непустой остаток.
                 let m = raw.match(/^(.+?)\s*:\s*(.*)$/);
                 if (!m) {
                     const qm = raw.match(/^(.+?)\s*\?\s+(.+)$/);
@@ -376,27 +378,22 @@
 
                 if (!entries.length) continue;
 
-                // 2. value-like → значение
                 if (looksLikeValue(raw)) {
                     if (last && !last.value) last.value = raw;
                     continue;
                 }
 
-                // 3. Строка заканчивается на '?' и последний ключ — вопрос без значения →
-                //    это продолжение вопроса, а не новый вопрос
                 if (/\?$/.test(raw) && last && !last.value && isQuestionKey(last.key)) {
                     last.key += ' ' + raw;
                     continue;
                 }
 
-                // 4. Новый вопрос
                 if (looksLikeQuestion(raw)) {
                     last = { key: raw, value: '' };
                     entries.push(last);
                     continue;
                 }
 
-                // 5-6. Приклеить к ключу или значению
                 if (last && !last.value) {
                     if (isQuestionKey(last.key) || looksUnfinished(last.key) || /^[a-zа-я]/.test(raw)) {
                         last.key += ' ' + raw;
@@ -411,9 +408,40 @@
             return entries;
         }
 
+        /* Фильтры */
+        function applyAisFilter(entries) {
+            const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase());
+            
+            // Для Country/Region нужно уточнить, что это из Address and Phone Information.
+            // В плоском списке это первый Country/Region после Home Address.
+            let homeCountry = '';
+            const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
+            if (homeIdx !== -1) {
+                const cr = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'country/region');
+                if (cr) homeCountry = cr.value;
+            }
+
+            const fields = [
+                { label: 'Name Provided', val: get('Name Provided')?.value },
+                { label: 'Email Address', val: get('Email Address')?.value },
+                { label: 'Passport/Travel Document Number', val: get('Passport/Travel Document Number')?.value },
+                { label: 'Country/Authority that Issued Passport/Travel Document', val: get('Country/Authority that Issued Passport/Travel Document')?.value },
+                { label: 'Country/Region of Birth', val: get('Country/Region of Birth')?.value },
+                { label: 'Country of Home Address', val: homeCountry },
+                { label: 'Visa Category', val: get('Specify')?.value },
+                { label: 'Date of Birth', val: get('Date of Birth')?.value },
+                { label: 'Primary Phone Number', val: get('Primary Phone Number')?.value },
+                { label: 'Have you ever been issued a U.S. Visa', val: get('Have you ever been issued a U.S. Visa')?.value },
+                { label: 'Date Last Visa was Issued', val: get('Date Last Visa was Issued')?.value },
+                { label: 'Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence?', val: get('Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence')?.value }
+            ];
+
+            return fields.filter(f => f.val !== undefined);
+        }
+
         function renderResult(entries) {
             if (!entries.length) {
-                resultEl.innerHTML = '<p>Не удалось распознать поля. Скорее всего, PDF — скан.</p>';
+                resultEl.innerHTML = '<p>Нет данных.</p>';
                 return;
             }
 
@@ -422,17 +450,17 @@
             const rows = document.createElement('div');
             rows.className = 'rows';
 
-            for (const { key, value } of entries) {
+            for (const { label, val } of entries) {
                 const row = document.createElement('div');
                 row.className = 'row';
 
                 const k = document.createElement('div');
                 k.className = 'key';
-                k.textContent = key;
+                k.textContent = label;
 
                 const v = document.createElement('div');
                 v.className = 'val';
-                v.textContent = value || '—';
+                v.textContent = val || '—';
 
                 row.append(k, v);
                 rows.appendChild(row);
@@ -449,17 +477,12 @@
             try {
                 const pages = await extractTextFromPdf(file);
                 const allLines = pages.flat();
+                parsedEntries = parseKeyValue(allLines);
 
-                // ВЫВОДИМ СЫРЫЕ СТРОКИ В КОНСОЛЬ
-                console.log('=== RAW LINES FROM PDF ===');
-                console.log(allLines);
+                if (!parsedEntries.length) return;
 
-                const entries = parseKeyValue(allLines);
-                console.log('Распознанные поля:', entries);
-
-                if (!entries.length) return;
-
-                renderResult(entries);
+                // По умолчанию показываем AIS
+                renderResult(applyAisFilter(parsedEntries));
                 leftPanel.classList.add('parsed');
             } catch (err) {
                 console.error('Ошибка парсинга PDF:', err);
@@ -472,6 +495,7 @@
             dropZone.classList.remove('loaded');
             fileInput.value = '';
             resultEl.innerHTML = '';
+            parsedEntries = [];
         }
 
         fileInput.addEventListener('change', (e) => {
@@ -503,6 +527,20 @@
         });
 
         closeBtn.addEventListener('click', reset);
+
+        aisBtn.addEventListener('click', () => {
+            if (parsedEntries.length) {
+                renderResult(applyAisFilter(parsedEntries));
+            }
+        });
+
+        // Заглушка для USV (пока не реализована)
+        usvBtn.addEventListener('click', () => {
+            if (parsedEntries.length) {
+                // Просто выводим всё, что было распарсено, если USV пока нет
+                renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
+            }
+        });
     </script>
 </body>
 </html>
