@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг DS-160</title>
+    <title>Парсинг DS-160 — нейтральный бумажный фон</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -251,24 +251,31 @@
             return pages;
         }
 
-        /* Разрезаем строку там, где внутри неё начинается новый вопрос.
-           Признаки вопроса: "? " + заглавная, или вопросительные слова
-           с заглавной буквы не в начале строки. */
-        const QUESTION_START = /(?<=[\s?])(Do|Does|Did|Are|Is|Was|Were|Have|Has|Had|Will|Would|Can|Could|Should|May|Might|Must)\s/;
+        /* Границы для разрезания смешанных строк */
+        const VALUE_TOKEN = /\b(YES|NO|DOES NOT APPLY|N\/A|DO NOT KNOW)\b/;
+        const QUESTION_WORD = /\b(Do|Does|Did|Are|Is|Was|Were|Have|Has|Had|Will|Would|Can|Could|Should|May|Might|Must)\b/;
 
+        /* Режем строку по первой границе: value-токен или вопросительное слово,
+           перед которыми есть непустой кусок. Рекурсивно. */
         function splitMixedLine(line) {
-            // Ищем первое вхождение вопросительного слова не в начале строки
-            const m = line.match(QUESTION_START);
-            if (!m || m.index === 0) return [line];
+            const valueMatch = VALUE_TOKEN.exec(line);
+            const questionMatch = QUESTION_WORD.exec(line);
 
-            // Проверим, что перед найденным словом есть что-то осмысленное
-            const head = line.slice(0, m.index).trim();
-            const tail = line.slice(m.index).trim();
+            let cutIndex = -1;
+
+            if (valueMatch && valueMatch.index > 0) cutIndex = valueMatch.index;
+            if (questionMatch && questionMatch.index > 0 &&
+                (cutIndex === -1 || questionMatch.index < cutIndex)) {
+                cutIndex = questionMatch.index;
+            }
+
+            if (cutIndex === -1) return [line];
+
+            const head = line.slice(0, cutIndex).trim();
+            const tail = line.slice(cutIndex).trim();
             if (!head || !tail) return [line];
 
-            // Рекурсивно режем хвост — вдруг там ещё вопросы
-            const rest = splitMixedLine(tail);
-            return [head, ...rest];
+            return [head, ...splitMixedLine(tail)];
         }
 
         const DROP_PATTERNS = [
