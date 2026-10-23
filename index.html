@@ -354,6 +354,9 @@
             const cleaned = split
                 .filter(l => l && l !== '—' && !shouldDrop(l));
 
+            console.log('=== CLEANED LINES ===');
+            console.log(cleaned);
+
             const entries = [];
             let last = null;
 
@@ -365,6 +368,7 @@
                     const value = m[2].trim();
                     last = { key, value };
                     entries.push(last);
+                    console.log('NEW KEY (with :):', raw, '→', last);
                     continue;
                 }
 
@@ -372,23 +376,28 @@
 
                 if (looksLikeValue(raw)) {
                     if (last && !last.value) last.value = raw;
+                    console.log('VALUE:', raw, '→ last:', last);
                     continue;
                 }
 
                 if (looksLikeQuestion(raw)) {
                     last = { key: raw, value: '' };
                     entries.push(last);
+                    console.log('NEW KEY (question):', raw, '→', last);
                     continue;
                 }
 
                 if (last && !last.value) {
                     if (isQuestionKey(last.key) || looksUnfinished(last.key) || /^[a-zа-я]/.test(raw)) {
                         last.key += ' ' + raw;
+                        console.log('APPEND TO KEY:', raw, '→ last:', last);
                     } else {
                         last.value = raw;
+                        console.log('SET VALUE:', raw, '→ last:', last);
                     }
                 } else if (last && last.value) {
                     last.value += ' ' + raw;
+                    console.log('APPEND TO VALUE:', raw, '→ last:', last);
                 }
             }
 
