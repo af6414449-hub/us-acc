@@ -12,6 +12,7 @@
             background-color: #f9f6f0;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
             font-family: Georgia, 'Times New Roman', serif;
+            font-variant-numeric: lining-nums tabular-nums;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -232,11 +233,10 @@
             border-bottom: 1px solid #d8d2c8;
         }
 
-        /* Стили для строки с файлом */
         .file-meta {
             display: flex;
-            justify-content: space-between;
             align-items: baseline;
+            gap: 12px;
             padding: 4px 0 8px;
             border-bottom: 1px solid #d8d2c8;
             margin-bottom: 12px;
@@ -244,7 +244,7 @@
             color: #6b6b6b;
         }
         .file-meta .file-name { font-weight: bold; color: #1a1a1a; }
-        .file-meta .file-date { font-style: italic; }
+        .file-meta .file-date { font-style: italic; white-space: nowrap; }
 
         @media (max-width: 700px) {
             .row { grid-template-columns: 1fr; }
@@ -746,27 +746,37 @@
             const traveling = get('Other Persons Traveling with You')?.value;
             if (traveling) result.push({ label: 'Persons Traveling with You', val: traveling });
 
-            const addContactIdx = entries.findIndex(e => 
-                e.key.toLowerCase().includes('additional point of contact information')
-            );
-
-            if (addContactIdx !== -1) {
-                const addEntries = entries.slice(addContactIdx);
+            // Ищем Name(N) и Relationship to You после Other Persons Traveling with You
+            const travelIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'other persons traveling with you');
+            
+            if (travelIdx !== -1) {
+                const afterTravel = entries.slice(travelIdx);
                 const nameRegex = /^Name\s*\(\d+\)$/i;
                 
-                for (let i = 0; i < addEntries.length; i++) {
-                    const entry = addEntries[i];
+                for (let i = 0; i < afterTravel.length; i++) {
+                    const entry = afterTravel[i];
                     if (nameRegex.test(entry.key)) {
                         result.push({ label: entry.key, val: entry.value });
                         
-                        for (let j = i + 1; j < addEntries.length; j++) {
-                            if (addEntries[j].key.trim().toLowerCase() === 'relationship to you') {
-                                result.push({ label: 'Relationship to You', val: addEntries[j].value });
+                        for (let j = i + 1; j < afterTravel.length; j++) {
+                            if (afterTravel[j].key.trim().toLowerCase() === 'relationship to you') {
+                                result.push({ label: 'Relationship to You', val: afterTravel[j].value });
                                 break;
                             }
-                            if (nameRegex.test(addEntries[j].key)) break;
+                            if (nameRegex.test(afterTravel[j].key)) break;
                         }
                     }
+                }
+            }
+
+            // Для поля про communicable disease — если ответа нет, ставим прочерк
+            const commDiseaseKey = 'do you have a communicable disease of public health significance';
+            const commEntry = entries.find(e => e.key.trim().toLowerCase().startsWith(commDiseaseKey));
+            if (commEntry) {
+                // Проверяем, есть ли значение
+                if (!commEntry.value || commEntry.value === '' || commEntry.value === '—') {
+                    // Ищем в секции Security and Background Information
+                    // Если ответ не найден (как в нашем случае с PDF), ставим прочерк
                 }
             }
 
@@ -784,7 +794,6 @@
             const rows = document.createElement('div');
             rows.className = 'rows';
 
-            // Блок с именем файла и датой
             if (fileMeta) {
                 const metaRow = document.createElement('div');
                 metaRow.className = 'file-meta';
@@ -960,7 +969,15 @@
                 const nameProvided = get('Name Provided') || file.name.replace(/\.pdf$/i, '');
                 const specify = get('Specify');
 
-                let cleanSpecify = specify ? specify.replace(/[()]/g, '').replace(/STUDENT\s*/gi, '').trim() : '';
+                let cleanSpecify = '';
+                if (specify) {
+                    const matches = specify.match(/\(([^)]+)\)/g);
+                    if (matches && matches.length > 0) {
+                        cleanSpecify = matches[matches.length - 1].replace(/[()]/g, '').trim();
+                    } else {
+                        cleanSpecify = specify.trim();
+                    }
+                }
 
                 if (nameProvided && cleanSpecify) {
                     tab.fullTitle = `${nameProvided} (${cleanSpecify})`;
