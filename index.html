@@ -13,11 +13,111 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 300 300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
             font-family: Georgia, 'Times New Roman', serif;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Панель вкладок */
+        .tabs-bar {
+            display: none;
+            align-items: flex-end;
+            padding: 0 20px;
+            gap: 4px;
+            background-color: transparent;
+            height: 48px;
+            flex-shrink: 0;
+            margin-top: 8px;
+        }
+        .tabs-bar.visible { display: flex; }
+
+        .tab {
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 38px;
+            padding: 0 12px 0 16px;
+            background-color: #e8e4dc;
+            border-radius: 10px 10px 0 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+            color: #1a1a1a;
+            cursor: pointer;
+            user-select: none;
+            max-width: 260px;
+            min-width: 120px;
+            box-shadow: 0 -1px 3px rgba(0,0,0,.05);
+            transition: background-color .15s, height .15s;
+            border: 1px solid transparent;
+            border-bottom: none;
+        }
+        .tab:hover { background-color: #ded9cf; }
+        .tab.active {
+            background-color: #f9f6f0;
+            height: 42px;
+            margin-bottom: -4px;
+            border-color: #d8d2c8;
+            z-index: 2;
+        }
+
+        .tab-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+
+        .tab-close {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #c62828;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background-color .15s;
+        }
+        .tab-close:hover { background-color: rgba(198, 40, 40, 0.1); }
+        .tab-close svg { width: 12px; height: 12px; display: block; }
+        .tab-close path { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+
+        .tab-add {
+            width: 38px;
+            height: 38px;
+            border: none;
+            background-color: #e8e4dc;
+            border-radius: 10px 10px 0 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a4a4a;
+            font-size: 20px;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-left: 4px;
+            transition: background-color .15s;
+            box-shadow: 0 -1px 3px rgba(0,0,0,.05);
+        }
+        .tab-add:hover { background-color: #ded9cf; }
+
+        /* Основная область */
+        .main-area {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            background-color: #f9f6f0;
+            border-top: 1px solid #d8d2c8;
         }
 
         .left-panel {
             position: absolute; top: 0; left: 0;
-            width: 100%; height: 100vh;
+            width: 100%; height: 100%;
             display: flex; align-items: center; justify-content: center;
             overflow: hidden;
         }
@@ -149,7 +249,6 @@
         }
         .action-btn:active { transform: scale(.97); }
 
-        /* Кнопка "крестик" всегда яркая */
         .action-btn.close {
             background-color: #2a2a2a;
             opacity: 1;
@@ -158,21 +257,18 @@
         .action-btn.close svg { width: 22px; height: 22px; display: block; }
         .action-btn.close path { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 
-        /* Остальные кнопки — бледные по умолчанию */
+        .action-btn.all,
         .action-btn.ais,
-        .action-btn.usv,
-        .action-btn.all {
+        .action-btn.usv {
             opacity: 0.4;
         }
 
-        /* Выделенная кнопка — яркая */
         .action-btn.active {
             opacity: 1;
         }
 
-        /* Цвета */
         .action-btn.all {
-            background-color: #6a6a6a;
+            background-color: #5a8f5a; /* приглушённый зелёный */
         }
         .action-btn.ais {
             background-color: #5b7a9d;
@@ -206,56 +302,70 @@
     </style>
 </head>
 <body>
-    <section class="left-panel" id="leftPanel">
-        <div class="action-stack" aria-label="Действия">
-            <button class="action-btn close" id="closeBtn" type="button" aria-label="Сбросить">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
-                </svg>
-            </button>
-            <button class="action-btn all active" id="allBtn" type="button" aria-label="Все поля">
-                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <text x="20" y="21">ALL</text>
-                </svg>
-            </button>
-            <button class="action-btn ais" id="aisBtn" type="button" aria-label="AIS">
-                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <text x="20" y="21">AIS</text>
-                </svg>
-            </button>
-            <button class="action-btn usv" id="usvBtn" type="button" aria-label="USV">
-                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <text x="20" y="21">USV</text>
-                </svg>
-            </button>
-        </div>
+    <!-- Панель вкладок -->
+    <div class="tabs-bar" id="tabsBar">
+        <div id="tabsContainer" style="display:flex; gap:4px;"></div>
+        <button class="tab-add" id="tabAddBtn" type="button" aria-label="Добавить вкладку">+</button>
+    </div>
 
-        <button class="upload-btn" id="dropZone" type="button"
-                aria-label="Загрузить PDF: перетащите файл или нажмите для выбора">
-            <input type="file" id="fileInput" accept="application/pdf,.pdf" aria-hidden="true">
-            <svg class="upload-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path class="ink" d="M60 82 V 34"/>
-                <path class="ink" d="M38 56 L 60 34 L 82 56"/>
-            </svg>
-        </button>
+    <!-- Основная область -->
+    <div class="main-area">
+        <section class="left-panel" id="leftPanel">
+            <div class="action-stack" aria-label="Действия">
+                <button class="action-btn close" id="closeBtn" type="button" aria-label="Сбросить текущую вкладку">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
+                    </svg>
+                </button>
+                <button class="action-btn all active" id="allBtn" type="button" aria-label="Все поля">
+                    <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <text x="20" y="21">ALL</text>
+                    </svg>
+                </button>
+                <button class="action-btn ais" id="aisBtn" type="button" aria-label="AIS">
+                    <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <text x="20" y="21">AIS</text>
+                    </svg>
+                </button>
+                <button class="action-btn usv" id="usvBtn" type="button" aria-label="USV">
+                    <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <text x="20" y="21">USV</text>
+                    </svg>
+                </button>
+            </div>
 
-        <div class="result" id="result"></div>
-    </section>
+            <button class="upload-btn" id="dropZone" type="button"
+                    aria-label="Загрузить PDF: перетащите файл или нажмите для выбора">
+                <input type="file" id="fileInput" accept="application/pdf,.pdf" aria-hidden="true">
+                <svg class="upload-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path class="ink" d="M60 82 V 34"/>
+                    <path class="ink" d="M38 56 L 60 34 L 82 56"/>
+                </svg>
+            </button>
+
+            <div class="result" id="result"></div>
+        </section>
+    </div>
 
     <script src="./libs/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdf.worker.min.js';
 
-        const leftPanel = document.getElementById('leftPanel');
-        const dropZone  = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const resultEl  = document.getElementById('result');
-        const closeBtn  = document.getElementById('closeBtn');
-        const allBtn    = document.getElementById('allBtn');
-        const aisBtn    = document.getElementById('aisBtn');
-        const usvBtn    = document.getElementById('usvBtn');
+        const leftPanel     = document.getElementById('leftPanel');
+        const dropZone      = document.getElementById('dropZone');
+        const fileInput     = document.getElementById('fileInput');
+        const resultEl      = document.getElementById('result');
+        const closeBtn      = document.getElementById('closeBtn');
+        const allBtn        = document.getElementById('allBtn');
+        const aisBtn        = document.getElementById('aisBtn');
+        const usvBtn        = document.getElementById('usvBtn');
+        const tabsBar       = document.getElementById('tabsBar');
+        const tabsContainer = document.getElementById('tabsContainer');
+        const tabAddBtn     = document.getElementById('tabAddBtn');
 
-        let parsedEntries = [];
+        let tabs = [];
+        let activeTabId = null;
+        let nextTabId = 1;
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -443,7 +553,6 @@
             return entries;
         }
 
-        /* Фильтр AIS */
         function applyAisFilter(entries) {
             const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase());
             
@@ -509,51 +618,151 @@
 
         function showAll() {
             setActiveButton(allBtn);
-            renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab || !tab.entries) return;
+            renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
         }
 
         function showAis() {
             setActiveButton(aisBtn);
-            renderResult(applyAisFilter(parsedEntries));
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab || !tab.entries) return;
+            renderResult(applyAisFilter(tab.entries));
         }
 
         function showUsv() {
             setActiveButton(usvBtn);
-            // Заглушка — всё, что распарсено
-            renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab || !tab.entries) return;
+            renderResult(tab.entries.map(e => ({ label: e.key, val: e.value })));
         }
 
-        async function handleFile(file) {
+        function updateTabsUi() {
+            tabsContainer.innerHTML = '';
+            tabs.forEach(tab => {
+                const el = document.createElement('div');
+                el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+                el.dataset.id = tab.id;
+
+                const name = document.createElement('span');
+                name.className = 'tab-name';
+                name.textContent = tab.title;
+                el.appendChild(name);
+
+                const close = document.createElement('button');
+                close.className = 'tab-close';
+                close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 6 L18 18 M18 6 L6 18" fill="none"/></svg>';
+                close.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeTab(tab.id);
+                });
+                el.appendChild(close);
+
+                el.addEventListener('click', () => switchTab(tab.id));
+
+                tabsContainer.appendChild(el);
+            });
+            tabsBar.classList.toggle('visible', tabs.length > 0);
+        }
+
+        function switchTab(id) {
+            activeTabId = id;
+            updateTabsUi();
+            const tab = tabs.find(t => t.id === id);
+            if (!tab) return;
+
+            leftPanel.classList.toggle('parsed', !!tab.entries && tab.entries.length > 0);
+            if (tab.entries && tab.entries.length > 0) {
+                // По умолчанию ALL при переключении
+                showAll();
+            } else {
+                resultEl.innerHTML = '';
+                // Если пустая вкладка, кнопка загрузки видна
+                dropZone.classList.remove('loaded');
+            }
+        }
+
+        function closeTab(id) {
+            const idx = tabs.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            tabs.splice(idx, 1);
+
+            if (activeTabId === id) {
+                if (tabs.length > 0) {
+                    // Выбираем соседнюю
+                    const next = tabs[Math.max(0, idx - 1)];
+                    switchTab(next.id);
+                } else {
+                    activeTabId = null;
+                    leftPanel.classList.remove('parsed');
+                    resultEl.innerHTML = '';
+                    dropZone.classList.remove('loaded');
+                    fileInput.value = '';
+                }
+            }
+            updateTabsUi();
+        }
+
+        function addTab(file) {
+            const newTab = {
+                id: nextTabId++,
+                title: file ? file.name.replace(/\.pdf$/i, '') : 'Новая',
+                entries: null,
+                file: file || null
+            };
+            tabs.push(newTab);
+            activeTabId = newTab.id;
+            updateTabsUi();
+            return newTab;
+        }
+
+        async function loadFileIntoActiveTab(file) {
             if (!file || !isPdf(file)) return;
+
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab) return;
 
             dropZone.classList.add('loaded');
 
             try {
                 const pages = await extractTextFromPdf(file);
                 const allLines = pages.flat();
-                parsedEntries = parseKeyValue(allLines);
+                const entries = parseKeyValue(allLines);
 
-                if (!parsedEntries.length) return;
+                tab.entries = entries;
+                tab.file = file;
 
-                leftPanel.classList.add('parsed');
-                showAll(); // По умолчанию — ALL
+                // Обновляем имя вкладки
+                const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase())?.value;
+                const nameProvided = get('Name Provided') || file.name.replace(/\.pdf$/i, '');
+                const specify = get('Specify');
+                tab.title = specify ? `${nameProvided} (${specify})` : nameProvided;
+
+                updateTabsUi();
+
+                if (entries.length) {
+                    leftPanel.classList.add('parsed');
+                    showAll();
+                } else {
+                    leftPanel.classList.remove('parsed');
+                }
             } catch (err) {
                 console.error('Ошибка парсинга PDF:', err);
                 dropZone.classList.remove('loaded');
             }
         }
 
-        function reset() {
-            leftPanel.classList.remove('parsed');
-            dropZone.classList.remove('loaded');
-            fileInput.value = '';
-            resultEl.innerHTML = '';
-            parsedEntries = [];
-            setActiveButton(allBtn);
-        }
-
+        // События
         fileInput.addEventListener('change', (e) => {
-            handleFile(e.target.files[0]);
+            const file = e.target.files[0];
+            if (file) {
+                if (!activeTabId) {
+                    addTab(file);
+                }
+                loadFileIntoActiveTab(file);
+            }
+            // Сбрасываем value, чтобы можно было загрузить тот же файл ещё раз
+            fileInput.value = '';
         });
 
         ['dragenter', 'dragover'].forEach(evt =>
@@ -571,19 +780,43 @@
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer?.files;
             if (files && files.length) {
-                try {
-                    const dt = new DataTransfer();
-                    dt.items.add(files[0]);
-                    fileInput.files = dt.files;
-                } catch (_) {}
-                handleFile(files[0]);
+                if (!activeTabId) {
+                    addTab(files[0]);
+                }
+                loadFileIntoActiveTab(files[0]);
             }
         });
 
-        closeBtn.addEventListener('click', reset);
-        allBtn.addEventListener('click', () => { if (parsedEntries.length) showAll(); });
-        aisBtn.addEventListener('click', () => { if (parsedEntries.length) showAis(); });
-        usvBtn.addEventListener('click', () => { if (parsedEntries.length) showUsv(); });
+        closeBtn.addEventListener('click', () => {
+            const tab = tabs.find(t => t.id === activeTabId);
+            if (!tab) return;
+            tab.entries = null;
+            tab.title = 'Новая';
+            tab.file = null;
+            leftPanel.classList.remove('parsed');
+            dropZone.classList.remove('loaded');
+            fileInput.value = '';
+            resultEl.innerHTML = '';
+            updateTabsUi();
+        });
+
+        allBtn.addEventListener('click', () => { if (activeTabId) showAll(); });
+        aisBtn.addEventListener('click', () => { if (activeTabId) showAis(); });
+        usvBtn.addEventListener('click', () => { if (activeTabId) showUsv(); });
+
+        tabAddBtn.addEventListener('click', () => {
+            addTab(null);
+            leftPanel.classList.remove('parsed');
+            resultEl.innerHTML = '';
+            dropZone.classList.remove('loaded');
+            fileInput.value = '';
+            setActiveButton(allBtn);
+        });
+
+        // Инициализация: одна пустая вкладка
+        addTab(null);
+        leftPanel.classList.remove('parsed');
+        setActiveButton(allBtn);
     </script>
 </body>
 </html>
