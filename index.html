@@ -80,6 +80,7 @@
 
         .left-panel.parsed .upload-btn { display: none; }
 
+        /* Результаты */
         .result {
             display: none;
             width: 100%; height: 100%;
@@ -91,7 +92,19 @@
         }
         .left-panel.parsed .result { display: block; }
 
-        .result dl {
+        .section-block { margin-bottom: 28px; }
+
+        .section-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #6b6b6b;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #d8d2c8;
+            padding-bottom: 4px;
+        }
+
+        .section-block dl {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             column-gap: 20px;
@@ -99,23 +112,23 @@
             margin: 0;
         }
 
-        .result dt,
-        .result dd {
+        .section-block dt,
+        .section-block dd {
             padding: 2px 0;
             margin: 0;
             word-break: break-word;
             white-space: pre-wrap;
         }
 
-        .result dt { font-weight: bold; }
-        .result dd { color: #2a2a2a; }
+        .section-block dt { font-weight: bold; }
+        .section-block dd { color: #2a2a2a; }
 
         @media (max-width: 700px) {
-            .result dl { grid-template-columns: 1fr; }
-            .result dt { margin-top: 6px; }
+            .section-block dl { grid-template-columns: 1fr; }
+            .section-block dt { margin-top: 6px; }
         }
 
-        /* Красный крестик в правом верхнем углу левой области */
+        /* Красный крестик */
         .close-btn {
             display: none;
             position: absolute;
@@ -140,7 +153,6 @@
     <div class="divider" aria-hidden="true"></div>
 
     <section class="left-panel" id="leftPanel">
-        <!-- Красный крестик сброса -->
         <button class="close-btn" id="closeBtn" type="button" aria-label="Сбросить">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M6 6 L18 18 M18 6 L6 18"
@@ -169,6 +181,8 @@
         const fileInput = document.getElementById('fileInput');
         const resultEl  = document.getElementById('result');
         const closeBtn  = document.getElementById('closeBtn');
+
+        /* ---------- Извлечение текста ---------- */
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -202,6 +216,8 @@
             return pages;
         }
 
+        /* ---------- Фильтрация мусора ---------- */
+
         const DROP_PATTERNS = [
             /^Application ID/i,
             /^Online Nonimmigrant Visa Application/i,
@@ -217,6 +233,8 @@
         function shouldDrop(raw) {
             return DROP_PATTERNS.some(re => re.test(raw));
         }
+
+        /* ---------- Разбор "Ключ: Значение" ---------- */
 
         function parseKeyValue(lines) {
             const entries = [];
@@ -235,30 +253,192 @@
             return entries;
         }
 
+        /* ---------- Секции ----------
+           Каждая секция: { title, start, end }
+           start — ключ, с которого начинается секция;
+           end   — ключ, на котором (включительно) секция заканчивается.
+           Сравнение — по префиксу ключа, регистронезависимо.
+        */
+
+        const SECTIONS = [
+            {
+                title: 'Personal Information',
+                start: 'Name Provided',
+                end:   'U.S. Taxpayer ID Number'
+            },
+            {
+                title: 'Address and Phone Information',
+                start: 'Home Address',
+                end:   'Have you used additional email addresses'
+            },
+            {
+                title: 'Passport/Travel Document Information',
+                start: 'Passport/Travel Document Type',
+                end:   'Have you ever lost a passport'
+            },
+            {
+                title: 'Travel Information',
+                start: 'Purpose of Trip to the U.S.',
+                end:   'Address where you will stay in the U.S.'
+            },
+            {
+                title: 'Travel Companions Information',
+                start: 'Other Persons Traveling with You',
+                end:   'Other Persons Traveling with You'
+            },
+            {
+                title: 'Previous U.S. Travel Information',
+                start: 'Have you ever been in the U.S.?',
+                end:   'Has anyone ever filed an immigrant petition'
+            },
+            {
+                title: 'U.S. Point of Contact Information',
+                start: 'Contact Person Name in the U.S.',
+                end:   'Email Address'
+            },
+            {
+                title: 'Family Information: Relatives',
+                start: "Father's Surnames",
+                end:   'Do you have any other relatives in the United States'
+            },
+            {
+                title: 'Family Information: Former Spouse(s)',
+                start: 'Number of former spouses',
+                end:   'Country/Region Marriage was Terminated'
+            },
+            {
+                title: 'Present Work Information',
+                start: 'Primary Occupation',
+                end:   'Briefly Describe your Duties'
+            },
+            {
+                title: 'Previous Work Information',
+                start: 'Were you previously employed',
+                end:   'Have you attended any educational institutions'
+            },
+            {
+                title: 'Additional Information',
+                start: 'Do you belong to a clan or tribe',
+                end:   'Have you ever served in, been a member of'
+            },
+            {
+                title: 'Security and Background Information',
+                start: 'Do you have a communicable disease',
+                end:   'Have you attended a public elementary school'
+            },
+            {
+                title: 'Additional Point of Contact Information',
+                start: 'Name(1)',
+                end:   'Email Address'
+            },
+            {
+                title: 'SEVIS Information',
+                start: 'SEVIS ID',
+                end:   'Street Address'
+            },
+            {
+                title: 'Location Information',
+                start: 'Current Location',
+                end:   null            // до конца — все оставшиеся поля
+            }
+        ];
+
+        /* Проверка: ключ начинается с заданного текста (без учёта регистра) */
+        function keyStarts(key, prefix) {
+            return key.toLowerCase().startsWith(prefix.toLowerCase());
+        }
+
+        /* Проверка: ключ ровно совпадает или начинается так, чтобы не зацепить лишнее */
+        function keyMatches(key, prefix) {
+            const k = key.toLowerCase();
+            const p = prefix.toLowerCase();
+            if (!k.startsWith(p)) return false;
+            // чтобы "Name Provided" не совпал с "Name Provided Xyz",
+            // но "Name(1)" совпал с "Name(1)"
+            const next = k.charAt(p.length);
+            return next === '' || !/[a-zа-я0-9]/i.test(next);
+        }
+
+        /* Разбиение списка entries на секции */
+        function groupIntoSections(entries) {
+            const sections = [];
+            let current = null;
+            let sectionIndex = -1;
+            let endReached = false;
+
+            for (const entry of entries) {
+                // Начинаем новую секцию, если ключ совпадает со start следующей секции
+                for (let i = sectionIndex + 1; i < SECTIONS.length; i++) {
+                    const sec = SECTIONS[i];
+                    if (keyMatches(entry.key, sec.start)) {
+                        // если текущая секция уже была — закрываем
+                        if (current) sections.push(current);
+                        current = { title: sec.title, entries: [] };
+                        sectionIndex = i;
+                        endReached = false;
+                        break;
+                    }
+                }
+
+                if (!current) {
+                    // поля до первой известной секции — пропускаем
+                    continue;
+                }
+
+                current.entries.push(entry);
+
+                // Проверяем, не закончилась ли текущая секция
+                const sec = SECTIONS[sectionIndex];
+                if (sec.end && !endReached && keyMatches(entry.key, sec.end)) {
+                    endReached = true;
+                    sections.push(current);
+                    current = null;
+                }
+            }
+
+            if (current) sections.push(current);
+            return sections;
+        }
+
+        /* ---------- Рендер ---------- */
+
         function renderResult(entries) {
             if (!entries.length) {
                 resultEl.innerHTML = '<p>Не удалось распознать поля. Скорее всего, PDF — скан.</p>';
                 return;
             }
 
-            const dl = document.createElement('dl');
-            for (const { key, value } of entries) {
-                const dt = document.createElement('dt');
-                dt.textContent = key;
-                const dd = document.createElement('dd');
-                dd.textContent = value || '—';
-                dl.append(dt, dd);
-            }
+            const sections = groupIntoSections(entries);
             resultEl.innerHTML = '';
-            resultEl.appendChild(dl);
+
+            for (const sec of sections) {
+                if (!sec.entries.length) continue;
+
+                const block = document.createElement('div');
+                block.className = 'section-block';
+
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.textContent = sec.title;
+                block.appendChild(title);
+
+                const dl = document.createElement('dl');
+                for (const { key, value } of sec.entries) {
+                    const dt = document.createElement('dt');
+                    dt.textContent = key;
+                    const dd = document.createElement('dd');
+                    dd.textContent = value || '—';
+                    dl.append(dt, dd);
+                }
+                block.appendChild(dl);
+                resultEl.appendChild(block);
+            }
         }
 
-        async function handleFile(file) {
-            if (!file) return;
+        /* ---------- Обработка файла ---------- */
 
-            if (!isPdf(file)) {
-                return;
-            }
+        async function handleFile(file) {
+            if (!file || !isPdf(file)) return;
 
             dropZone.classList.add('loaded');
 
@@ -269,9 +449,7 @@
 
                 console.log('Распознанные поля:', entries);
 
-                if (!entries.length) {
-                    return;
-                }
+                if (!entries.length) return;
 
                 renderResult(entries);
                 leftPanel.classList.add('parsed');
@@ -287,6 +465,8 @@
             fileInput.value = '';
             resultEl.innerHTML = '';
         }
+
+        /* ---------- События ---------- */
 
         fileInput.addEventListener('change', (e) => {
             handleFile(e.target.files[0]);
