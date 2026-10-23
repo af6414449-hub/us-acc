@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Парсинг DS-160</title>
+    <title>Парсинг DS-160 — нейтральный бумажный фон</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -75,7 +75,6 @@
 
         .left-panel.parsed .upload-btn { display: none; }
 
-        /* Результаты — без секций, просто список пар ключ/значение */
         .result {
             display: none;
             width: 100%; height: 100%;
@@ -120,7 +119,6 @@
             .row .key { margin-top: 6px; }
         }
 
-        /* Правая колонка действий */
         .action-stack {
             display: none;
             position: absolute;
@@ -205,13 +203,11 @@
                     <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
                 </svg>
             </button>
-
             <button class="action-btn ais" type="button" aria-label="AIS">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">AIS</text>
                 </svg>
             </button>
-
             <button class="action-btn usv" type="button" aria-label="USV">
                 <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <text x="20" y="21">USV</text>
@@ -273,6 +269,7 @@
             return pages;
         }
 
+        /* Мусорные строки-обрывки (продолжения вопросов) и служебные шапки */
         const DROP_PATTERNS = [
             /^Application ID/i,
             /^Online Nonimmigrant Visa Application/i,
@@ -282,31 +279,111 @@
             /^Before submitting the application/i,
             /^To navigate to the next section/i,
             /^Photo Provided/i,
-            /^Upload New Photo/i
+            /^Upload New Photo/i,
+            /^AIS$/i,
+            /^USV$/i,
+            /^Edit /i,
+            /^indicated above/i,
+            /^country\/region of origin \(nationality\) above/i,
+            /^residence$/i,
+            /^port of entry$/i,
+            /^or above$/i,
+            /^years$/i,
+            /^tissue$/i,
+            /^States$/i,
+            /^social, or charitable organization/i,
+            /^explosives, nuclear/i,
+            /^insurgent organization/i,
+            /^welfare of yourself or others/i,
+            /^pardon, amnesty/i,
+            /^substances$/i,
+            /^outside the United States$/i,
+            /^last five years/i,
+            /^terrorist activities$/i,
+            /^terrorist organizations$/i,
+            /^political killings/i,
+            /^sterilization against/i,
+            /^means$/i,
+            /^official or otherwise/i,
+            /^granted legal custody/i,
+            /^after November 30/i,
+            /^\(Communicable diseases of/i,
+            /^time, particularly severe/i,
+            /^have you been engaged in prostitution/i,
+            /^while in the United States$/i
         ];
 
         function shouldDrop(raw) {
             return DROP_PATTERNS.some(re => re.test(raw));
         }
 
-        /* Разбираем строки по ':' или '?' (в вопросительных полях
-           DS-160 нет двоеточия, но есть вопрос со значением после него) */
-        function parseKeyValue(lines) {
+        /* Значения, которые точно не являются ключами */
+        const VALUE_LIKE = /^(YES|NO|DOES NOT APPLY|—|N\/A)$/i;
+
+        /* Признак, что строка — продолжение/обрывок значения (не ключ) */
+        function looksLikeValue(str) {
+            if (VALUE_LIKE.test(str)) return true;
+            // даты: 31 JANUARY 2004
+            if (/^\d{1,2}\s+[A-Z]+ \d{4}$/i.test(str)) return true;
+            // годы / числа
+            if (/^\d{4}$/.test(str)) return true;
+            if (/^\d+$/.test(str)) return true;
+            // адреса и телефоны
+            if (/^\+?\d[\d\s()-]{5,}$/.test(str)) return true;
+            // e-mail
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return true;
+            // URL
+            if (/^https?:\/\//i.test(str)) return true;
+            return false;
+        }
+
+        /* Парсинг «ключ → значение» из плоского списка строк.
+           Строки идут парами: ключ, затем значение.
+           Если следующая строка похожа на новый ключ, а не на значение,
+           текущий ключ получает пустое значение. */
+        function parsePairs(lines) {
+            const cleaned = lines.filter(l => l && !shouldDrop(l));
             const entries = [];
-            for (const raw of lines) {
-                if (!raw) continue;
-                if (shouldDrop(raw)) continue;
 
-                const m = raw.match(/^(.+?)(?:\s*[:?]\s*)(.*)$/);
-                if (!m) continue;
+            let i = 0;
+            while (i < cleaned.length) {
+                const key = cleaned[i].trim();
+                if (!key) { i++; continue; }
 
-                const key = m[1].trim();
-                const value = m[2].trim();
-                if (!key) continue;
+                // Если строка сама выглядит как значение без ключа — пропускаем
+                if (looksLikeValue(key)) { i++; continue; }
 
-                entries.push({ key, value });
+                const next = cleaned[i + 1] ? cleaned[i + 1].trim() : null;
+
+                if (next === null) {
+                    entries.push({ key, value: '' });
+                    break;
+                }
+
+                // Если следующая строка — тоже «ключеподобная» (не значение),
+                // текущий ключ без значения, и переходим к следующей как к ключу
+                if (!looksLikeValue(next) && isLikelyKey(next)) {
+                    entries.push({ key, value: '' });
+                    i += 1;
+                    continue;
+                }
+
+                entries.push({ key, value: next });
+                i += 2;
             }
+
             return entries;
+        }
+
+        /* Эвристика «похоже на ключ»: не значение, не слишком длинное число,
+           не URL и т.п. Ключи DS-160 — обычно фразы на английском. */
+        function isLikelyKey(str) {
+            if (!str) return false;
+            if (looksLikeValue(str)) return false;
+            // ключи обычно содержат буквы
+            if (!/[A-Za-z]/.test(str)) return false;
+            // ключи — не слишком короткие аббревиатуры без контекста (но допускаем)
+            return true;
         }
 
         function renderResult(entries) {
@@ -347,7 +424,7 @@
             try {
                 const pages = await extractTextFromPdf(file);
                 const allLines = pages.flat();
-                const entries = parseKeyValue(allLines);
+                const entries = parsePairs(allLines);
 
                 console.log('Распознанные поля:', entries);
 
