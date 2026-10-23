@@ -143,25 +143,53 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: filter .15s ease, transform .1s ease;
+            transition: opacity .15s ease, transform .1s ease, filter .15s ease;
             box-shadow: 0 1px 2px rgba(0,0,0,.10);
             padding: 0;
         }
-        .action-btn:hover { filter: brightness(0.94); }
         .action-btn:active { transform: scale(.97); }
 
-        .action-btn.close { background-color: #2a2a2a; }
+        /* Кнопка "крестик" всегда яркая */
+        .action-btn.close {
+            background-color: #2a2a2a;
+            opacity: 1;
+        }
         .action-btn.close:hover { background-color: #1a1a1a; }
         .action-btn.close svg { width: 22px; height: 22px; display: block; }
         .action-btn.close path { stroke: #fff; stroke-width: 3; stroke-linecap: round; }
 
-        .action-btn.ais { background-color: #5b7a9d; }
-        .action-btn.ais:hover { background-color: #4d6a8a; }
+        /* Остальные кнопки — бледные по умолчанию */
+        .action-btn.ais,
+        .action-btn.usv,
+        .action-btn.all {
+            opacity: 0.4;
+        }
 
-        .action-btn.usv { background-color: #b0584f; }
-        .action-btn.usv:hover { background-color: #9d4a42; }
+        /* Выделенная кнопка — яркая */
+        .action-btn.active {
+            opacity: 1;
+        }
+
+        /* Цвета */
+        .action-btn.all {
+            background-color: #6a6a6a;
+        }
+        .action-btn.ais {
+            background-color: #5b7a9d;
+        }
+        .action-btn.usv {
+            background-color: #b0584f;
+        }
+
+        .action-btn:hover {
+            filter: brightness(1.1);
+        }
+        .action-btn.active:hover {
+            filter: brightness(0.94);
+        }
 
         .action-btn .label-svg { display: block; width: 36px; height: 36px; }
+        .action-btn.all .label-svg { width: 34px; }
         .action-btn.ais .label-svg { width: 34px; }
         .action-btn.usv .label-svg { width: 36px; }
 
@@ -183,6 +211,11 @@
             <button class="action-btn close" id="closeBtn" type="button" aria-label="Сбросить">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path d="M6 6 L18 18 M18 6 L6 18" fill="none"/>
+                </svg>
+            </button>
+            <button class="action-btn all active" id="allBtn" type="button" aria-label="Все поля">
+                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <text x="20" y="21">ALL</text>
                 </svg>
             </button>
             <button class="action-btn ais" id="aisBtn" type="button" aria-label="AIS">
@@ -218,6 +251,7 @@
         const fileInput = document.getElementById('fileInput');
         const resultEl  = document.getElementById('result');
         const closeBtn  = document.getElementById('closeBtn');
+        const allBtn    = document.getElementById('allBtn');
         const aisBtn    = document.getElementById('aisBtn');
         const usvBtn    = document.getElementById('usvBtn');
 
@@ -291,6 +325,7 @@
             /^Upload New Photo/i,
             /^AIS$/i,
             /^USV$/i,
+            /^ALL$/i,
             /^Edit /i,
             /^Personal, Address, Phone, and Passport Information$/i,
             /^Travel Information$/i,
@@ -408,12 +443,10 @@
             return entries;
         }
 
-        /* Фильтры */
+        /* Фильтр AIS */
         function applyAisFilter(entries) {
             const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase());
             
-            // Для Country/Region нужно уточнить, что это из Address and Phone Information.
-            // В плоском списке это первый Country/Region после Home Address.
             let homeCountry = '';
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
             if (homeIdx !== -1) {
@@ -469,6 +502,27 @@
             resultEl.appendChild(rows);
         }
 
+        function setActiveButton(btn) {
+            [allBtn, aisBtn, usvBtn].forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+        }
+
+        function showAll() {
+            setActiveButton(allBtn);
+            renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
+        }
+
+        function showAis() {
+            setActiveButton(aisBtn);
+            renderResult(applyAisFilter(parsedEntries));
+        }
+
+        function showUsv() {
+            setActiveButton(usvBtn);
+            // Заглушка — всё, что распарсено
+            renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
+        }
+
         async function handleFile(file) {
             if (!file || !isPdf(file)) return;
 
@@ -481,9 +535,8 @@
 
                 if (!parsedEntries.length) return;
 
-                // По умолчанию показываем AIS
-                renderResult(applyAisFilter(parsedEntries));
                 leftPanel.classList.add('parsed');
+                showAll(); // По умолчанию — ALL
             } catch (err) {
                 console.error('Ошибка парсинга PDF:', err);
                 dropZone.classList.remove('loaded');
@@ -496,6 +549,7 @@
             fileInput.value = '';
             resultEl.innerHTML = '';
             parsedEntries = [];
+            setActiveButton(allBtn);
         }
 
         fileInput.addEventListener('change', (e) => {
@@ -527,20 +581,9 @@
         });
 
         closeBtn.addEventListener('click', reset);
-
-        aisBtn.addEventListener('click', () => {
-            if (parsedEntries.length) {
-                renderResult(applyAisFilter(parsedEntries));
-            }
-        });
-
-        // Заглушка для USV (пока не реализована)
-        usvBtn.addEventListener('click', () => {
-            if (parsedEntries.length) {
-                // Просто выводим всё, что было распарсено, если USV пока нет
-                renderResult(parsedEntries.map(e => ({ label: e.key, val: e.value })));
-            }
-        });
+        allBtn.addEventListener('click', () => { if (parsedEntries.length) showAll(); });
+        aisBtn.addEventListener('click', () => { if (parsedEntries.length) showAis(); });
+        usvBtn.addEventListener('click', () => { if (parsedEntries.length) showUsv(); });
     </script>
 </body>
 </html>
