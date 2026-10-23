@@ -15,7 +15,6 @@
             overflow: hidden;
         }
 
-        /* Единственная область — на всю ширину */
         .left-panel {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100vh;
@@ -76,7 +75,6 @@
 
         .left-panel.parsed .upload-btn { display: none; }
 
-        /* Результаты */
         .result {
             display: none;
             width: 100%; height: 100%;
@@ -100,6 +98,7 @@
             padding-bottom: 4px;
         }
 
+        /* Сетка двух колонок */
         .section-block dl {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -108,23 +107,60 @@
             margin: 0;
         }
 
-        .section-block dt,
-        .section-block dd {
-            padding: 2px 0;
+        /* Пары ключ/значение в двух колонках —
+           каждая строка выделяется при наведении.
+           Для этого ключ и значение обёрнуты в общий невидимый
+           слой-подсветку через псевдоэлемент? Нет — оборачиваем
+           пару в отдельный ряд нельзя в dl+grid без изменения разметки.
+           Поэтому делаем два <div class="row"> внутри dl через CSS grid:
+           используем display: contents у dt/dd и стилизуем ряды.
+           Проще: переключаемся на div-структуру .row > .key + .val.
+        */
+
+        .section-block .row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            column-gap: 20px;
+            /* строка занимает обе колонки родителя */
+            grid-column: 1 / -1;
+            border-radius: 4px;
+            transition: background-color .12s ease;
+        }
+
+        .section-block .row:hover {
+            background-color: rgba(0, 0, 0, 0.045);
+        }
+
+        .section-block .row .key {
+            font-weight: bold;
+            padding: 2px 4px;
             margin: 0;
             word-break: break-word;
             white-space: pre-wrap;
         }
 
-        .section-block dt { font-weight: bold; }
-        .section-block dd { color: #2a2a2a; }
-
-        @media (max-width: 700px) {
-            .section-block dl { grid-template-columns: 1fr; }
-            .section-block dt { margin-top: 6px; }
+        .section-block .row .val {
+            padding: 2px 4px;
+            margin: 0;
+            color: #2a2a2a;
+            word-break: break-word;
+            white-space: pre-wrap;
         }
 
-        /* Красный крестик */
+        /* Сетка-обёртка для рядов */
+        .rows {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            row-gap: 0;
+        }
+
+        @media (max-width: 700px) {
+            .section-block .row {
+                grid-template-columns: 1fr;
+            }
+            .section-block .row .key { margin-top: 6px; }
+        }
+
         .close-btn {
             display: none;
             position: absolute;
@@ -354,15 +390,26 @@
                 title.textContent = sec.title;
                 block.appendChild(title);
 
-                const dl = document.createElement('dl');
+                const rows = document.createElement('div');
+                rows.className = 'rows';
+
                 for (const { key, value } of sec.entries) {
-                    const dt = document.createElement('dt');
-                    dt.textContent = key;
-                    const dd = document.createElement('dd');
-                    dd.textContent = value || '—';
-                    dl.append(dt, dd);
+                    const row = document.createElement('div');
+                    row.className = 'row';
+
+                    const k = document.createElement('div');
+                    k.className = 'key';
+                    k.textContent = key;
+
+                    const v = document.createElement('div');
+                    v.className = 'val';
+                    v.textContent = value || '—';
+
+                    row.append(k, v);
+                    rows.appendChild(row);
                 }
-                block.appendChild(dl);
+
+                block.appendChild(rows);
                 resultEl.appendChild(block);
             }
         }
