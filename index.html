@@ -496,7 +496,6 @@
         }
 
         function parseKeyValue(lines) {
-            // Ищем Application ID в сырых строках (до фильтрации)
             let applicationId = '';
             for (const l of lines) {
                 const m = l.match(/Application ID\s+([A-Z0-9]{10})/i);
@@ -582,65 +581,77 @@
             const currentLoc = get('Current Location')?.value;
             if (currentLoc) result.push({ label: 'Current Location', val: currentLoc });
 
-            // Остальные поля до National Identification Number
-            const startFields = [
-                'Name Provided',
-                'Full Name in Native Alphabet',
-                'Other Names Used',
-                'Telecode Name Used',
-                'Sex',
-                'Marital Status',
-                'Date of Birth',
-                'Country/Region of Birth',
-                'Country/Region of Origin (Nationality)',
-                'Do you hold or have you held any nationality other than the one indicated above on nationality',
-                'Are you a permanent resident of a country/region other than your country/region of origin (nationality) above'
-            ];
+            // Фиксированные основные поля
+            const nameVal = get('Name Provided')?.value;
+            if (nameVal) result.push({ label: 'Name Provided', val: nameVal });
 
-            for (const field of startFields) {
-                const entry = get(field);
-                if (entry) {
-                    let val = entry.value;
-                    if (field === 'Country/Region of Birth') {
-                        const parts = val.split(',');
-                        val = parts[parts.length - 1].trim();
-                    }
-                    result.push({ label: field, val });
+            const dobVal = get('Date of Birth')?.value;
+            if (dobVal) result.push({ label: 'Date of Birth', val: dobVal });
+
+            // Country/Region of Birth (только страна)
+            const birthVal = get('Country/Region of Birth')?.value;
+            if (birthVal) {
+                const parts = birthVal.split(',');
+                result.push({ label: 'Country/Region of Birth', val: parts[parts.length - 1].trim() });
+            }
+
+            // Country/Region of Origin (Nationality)
+            const origin = get('Country/Region of Origin (Nationality)')?.value;
+            if (origin) result.push({ label: 'Country/Region of Origin (Nationality)', val: origin });
+
+            // Вопрос о гражданстве
+            const nationalityQ = get('Do you hold or have you held any nationality other than the one indicated above on nationality')?.value;
+            if (nationalityQ) result.push({ label: 'Do you hold or have you held any nationality other than the one indicated above on nationality?', val: nationalityQ });
+
+            // Вопрос о резидентстве + все подполя до National Identification Number
+            const residentKey = 'are you a permanent resident of a country/region other than your country/region of origin (nationality) above';
+            const startIdx = entries.findIndex(e => e.key.trim().toLowerCase() === residentKey);
+            const endIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'national identification number');
+
+            if (startIdx !== -1) {
+                const end = endIdx !== -1 ? endIdx : entries.length;
+                for (let i = startIdx; i < end; i++) {
+                    const e = entries[i];
+                    result.push({ label: e.key, val: e.value });
                 }
             }
 
-            // Home Address Country
+            // Остальные фиксированные поля
+            const emailVal = get('Email Address')?.value;
+            if (emailVal) result.push({ label: 'Email Address', val: emailVal });
+
+            const passportNum = get('Passport/Travel Document Number')?.value;
+            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum });
+
+            const passportAuth = get('Country/Authority that Issued Passport/Travel Document')?.value;
+            if (passportAuth) result.push({ label: 'Country/Authority that Issued Passport/Travel Document', val: passportAuth });
+
+            // Country of Home Address
             let homeCountry = '';
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
             if (homeIdx !== -1) {
                 const cr = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'country/region');
                 if (cr) homeCountry = cr.value;
             }
+            if (homeCountry) result.push({ label: 'Country of Home Address', val: homeCountry });
 
-            const remainingFields = [
-                { label: 'Email Address', name: 'Email Address' },
-                { label: 'Passport/Travel Document Number', name: 'Passport/Travel Document Number' },
-                { label: 'Country/Authority that Issued Passport/Travel Document', name: 'Country/Authority that Issued Passport/Travel Document' },
-                { label: 'Country of Home Address', name: null, val: homeCountry },
-                { label: 'Visa Category', name: 'Specify' },
-                { label: 'Primary Phone Number', name: 'Primary Phone Number' },
-                { label: 'Have you ever been issued a U.S. Visa', name: 'Have you ever been issued a U.S. Visa' },
-                { label: 'Date Last Visa was Issued', name: 'Date Last Visa was Issued' },
-                { label: 'Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence?', name: 'Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence' }
-            ];
+            // Visa Category
+            const specify = get('Specify')?.value;
+            if (specify) result.push({ label: 'Visa Category', val: specify });
 
-            for (const f of remainingFields) {
-                let val;
-                if (f.name === null) {
-                    val = f.val;
-                } else {
-                    const entry = get(f.name);
-                    val = entry?.value;
-                }
-                if (val !== undefined) {
-                    result.push({ label: f.label, val });
-                }
-            }
+            // Primary Phone
+            const phone = get('Primary Phone Number')?.value;
+            if (phone) result.push({ label: 'Primary Phone Number', val: phone });
+
+            // US Visa
+            const issuedVisa = get('Have you ever been issued a U.S. Visa')?.value;
+            if (issuedVisa) result.push({ label: 'Have you ever been issued a U.S. Visa', val: issuedVisa });
+
+            const lastVisa = get('Date Last Visa was Issued')?.value;
+            if (lastVisa) result.push({ label: 'Date Last Visa was Issued', val: lastVisa });
+
+            const sameCountry = get('Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence')?.value;
+            if (sameCountry) result.push({ label: 'Are you applying in the same country or location where the visa above was issued, and is this country or location your place of principal of residence?', val: sameCountry });
 
             return result;
         }
@@ -738,18 +749,30 @@
 
             // "Сопровождающие:"
             result.push({ section: 'Сопровождающие:' });
-            const traveling = get('Other Persons Traveling with You')?.value || get('Persons Traveling with You')?.value;
+            const traveling = get('Other Persons Traveling with You')?.value;
             if (traveling) result.push({ label: 'Persons Traveling with You', val: traveling });
 
-            const nameRegex = /^Name\s*\(\d+\)$/i;
-            const names = entries.filter(e => nameRegex.test(e.key));
-            for (const entry of names) {
-                result.push({ label: entry.key, val: entry.value });
-                const idx = entries.indexOf(entry);
-                if (idx !== -1) {
-                    const rel = entries.slice(idx + 1).find(e => e.key.trim().toLowerCase() === 'relationship to you');
-                    if (rel && rel.value) {
-                        result.push({ label: 'Relationship to You', val: rel.value });
+            // Name(N) из Additional Point of Contact Information
+            const addContactIdx = entries.findIndex(e => 
+                e.key.toLowerCase().includes('additional point of contact information')
+            );
+
+            if (addContactIdx !== -1) {
+                const addEntries = entries.slice(addContactIdx);
+                const nameRegex = /^Name\s*\(\d+\)$/i;
+                
+                for (let i = 0; i < addEntries.length; i++) {
+                    const entry = addEntries[i];
+                    if (nameRegex.test(entry.key)) {
+                        result.push({ label: entry.key, val: entry.value });
+                        
+                        for (let j = i + 1; j < addEntries.length; j++) {
+                            if (addEntries[j].key.trim().toLowerCase() === 'relationship to you') {
+                                result.push({ label: 'Relationship to You', val: addEntries[j].value });
+                                break;
+                            }
+                            if (nameRegex.test(addEntries[j].key)) break;
+                        }
                     }
                 }
             }
