@@ -144,13 +144,14 @@
         }
         .left-panel.parsed .action-stack { display: flex; }
 
+        /* Квадратные кнопки с мягкими приглушёнными цветами */
         .action-btn {
-            width: 120px;
-            height: 44px;
+            width: 56px;
+            height: 56px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font: inherit;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: bold;
             letter-spacing: .02em;
             color: #fff;
@@ -159,18 +160,19 @@
             align-items: center;
             justify-content: center;
             transition: filter .15s ease, transform .1s ease;
-            box-shadow: 0 1px 2px rgba(0,0,0,.12);
-        }
-        .action-btn:hover { filter: brightness(1.08); }
-        .action-btn:active { transform: scale(.98); }
-
-        .action-btn.close {
-            background-color: #c62828;
+            box-shadow: 0 1px 2px rgba(0,0,0,.10);
             padding: 0;
         }
-        .action-btn.close:hover { background-color: #a82020; }
+        .action-btn:hover { filter: brightness(0.94); }
+        .action-btn:active { transform: scale(.97); }
+
+        /* Крестик — чёрная кнопка */
+        .action-btn.close {
+            background-color: #2a2a2a;
+        }
+        .action-btn.close:hover { background-color: #1a1a1a; }
         .action-btn.close svg {
-            width: 20px; height: 20px; display: block;
+            width: 22px; height: 22px; display: block;
         }
         .action-btn.close path {
             stroke: #fff;
@@ -178,14 +180,17 @@
             stroke-linecap: round;
         }
 
+        /* Синяя AIS — приглушённая */
         .action-btn.ais {
-            background-color: #1565c0;
+            background-color: #5b7a9d;
         }
+        .action-btn.ais:hover { background-color: #4d6a8a; }
 
-        /* Надпись изменена на USV */
+        /* Красная USV — приглушённая */
         .action-btn.usv {
-            background-color: #c62828;
+            background-color: #b0584f;
         }
+        .action-btn.usv:hover { background-color: #9d4a42; }
     </style>
 </head>
 <body>
