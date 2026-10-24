@@ -247,7 +247,7 @@
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: .05em;
-            color: #5b7a9d; /* Цвет заголовков */
+            color: #5b7a9d;
             margin-top: 16px;
             margin-bottom: 4px;
             padding-bottom: 2px;
@@ -275,7 +275,6 @@
             .file-meta { flex-direction: column; gap: 4px; }
         }
 
-        /* Одна кнопка фильтра */
         .action-stack {
             display: none;
             position: absolute;
@@ -309,7 +308,6 @@
         .action-btn:active { transform: scale(.97); }
         .action-btn:hover { filter: brightness(1.1); }
 
-        /* Цвета для кнопки фильтра */
         .action-btn.filter-ais { background-color: #5b7a9d; }
         .action-btn.filter-usv { background-color: #b0584f; }
         .action-btn.filter-all { background-color: #5a8f5a; }
@@ -330,7 +328,6 @@
             text-anchor: middle;
         }
 
-        /* Модальное окно */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -424,7 +421,6 @@
         </section>
     </div>
 
-    <!-- Модальное окно -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal-content">
             <button class="modal-close" id="modalClose" type="button" aria-label="Закрыть">
@@ -457,7 +453,7 @@
         let tabs = [];
         let activeTabId = null;
         let nextTabId = 1;
-        let activeFilter = 'ais'; // По умолчанию AIS
+        let activeFilter = 'ais';
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -739,10 +735,11 @@
             const dsId = get('DS-160 ID')?.value;
             if (dsId) result.push({ label: 'DS-160 ID', val: dsId });
 
+            const specify = get('Specify')?.value;
+            if (specify) result.push({ label: 'Visa Category', val: specify });
+
             const currentLoc = get('Current Location')?.value;
-            if (currentLoc) {
-                result.push({ label: 'Current Location', val: currentLoc });
-            }
+            if (currentLoc) result.push({ label: 'Current Location', val: currentLoc });
 
             result.push({ section: 'Данные заявителя:' });
             const nameProvided = get('Name Provided')?.value;
@@ -754,8 +751,6 @@
                 const parts = birthVal.split(',');
                 result.push({ label: 'Country/Region of Birth', val: parts[parts.length - 1].trim() });
             }
-
-            result.push({ section: 'Контактная информация:' });
             const primPhone = get('Primary Phone Number')?.value;
             if (primPhone) result.push({ label: 'Primary Phone Number', val: primPhone });
             const secPhone = get('Secondary Phone Number')?.value;
@@ -765,40 +760,35 @@
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
             if (homeIdx !== -1) {
                 const homeAddress = entries[homeIdx].value;
-                if (homeAddress) result.push({ label: 'Home Address', val: homeAddress });
-
                 const city = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'city')?.value;
-                if (city) result.push({ label: 'City', val: city });
-
                 const state = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'state/province')?.value;
-                if (state) result.push({ label: 'State/Province', val: state });
-
                 const zip = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'postal zone/zip code')?.value;
-                if (zip) result.push({ label: 'Postal Zone/ZIP Code', val: zip });
-
                 const country = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'country/region')?.value;
-                if (country) result.push({ label: 'Country/Region', val: country });
+
+                const parts = [homeAddress, city, state, zip, country].filter(Boolean);
+                if (parts.length) result.push({ label: 'Home Address', val: parts.join(', ') });
             }
 
             result.push({ section: 'Паспортные данные:' });
-            const passportFields = [
-                'Passport/Travel Document Number',
-                'Issuance Date',
-                'City where issued',
-                'Country/Region where issued',
-                'Expiration Date',
-                'Date of Birth',
-                'Country/Region of Origin (Nationality)',
-                'National Identification Number'
-            ];
-            for (const f of passportFields) {
-                const val = get(f)?.value;
-                if (val) result.push({ label: f, val });
+            const passportNum = get('Passport/Travel Document Number')?.value;
+            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum });
+            const issuanceDate = get('Issuance Date')?.value;
+            if (issuanceDate) result.push({ label: 'Issuance Date', val: issuanceDate });
+            
+            const cityIssued = get('City where issued')?.value;
+            const countryIssued = get('Country/Region where issued')?.value;
+            if (cityIssued || countryIssued) {
+                result.push({ label: 'Place where issued', val: [cityIssued, countryIssued].filter(Boolean).join(', ') });
             }
 
-            result.push({ section: 'Варианты визы:' });
-            const specify = get('Specify')?.value;
-            if (specify) result.push({ label: 'Visa Category', val: specify });
+            const expirationDate = get('Expiration Date')?.value;
+            if (expirationDate) result.push({ label: 'Expiration Date', val: expirationDate });
+            const dob = get('Date of Birth')?.value;
+            if (dob) result.push({ label: 'Date of Birth', val: dob });
+            const origin = get('Country/Region of Origin (Nationality)')?.value;
+            if (origin) result.push({ label: 'Country/Region of Origin (Nationality)', val: origin });
+            const natId = get('National Identification Number')?.value;
+            if (natId) result.push({ label: 'National Identification Number', val: natId });
 
             const nationalityQuestion = get('Do you hold or have you held any nationality other than the one indicated above on nationality')?.value;
             if (nationalityQuestion) result.push({ label: 'Do you hold or have you held any nationality other than the one indicated above on nationality?', val: nationalityQuestion });
@@ -816,7 +806,15 @@
             let schoolAddress = '';
             if (sevisIdx !== -1) {
                 const addrEntry = entries.slice(sevisIdx).find(e => e.key.trim().toLowerCase() === 'street address');
-                if (addrEntry) schoolAddress = addrEntry.value;
+                if (addrEntry) {
+                    // Оставляем только 5-значный индекс в конце
+                    const matches = addrEntry.value.match(/\b\d{5}\b/g);
+                    if (matches) {
+                        schoolAddress = matches[matches.length - 1];
+                    } else {
+                        schoolAddress = addrEntry.value;
+                    }
+                }
             }
             if (schoolAddress) result.push({ label: 'Street Address', val: schoolAddress });
 
@@ -824,7 +822,6 @@
             const travelIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'other persons traveling with you');
             if (travelIdx !== -1) {
                 const traveling = entries[travelIdx].value;
-                result.push({ label: 'Persons Traveling with You', val: traveling });
 
                 if (traveling && traveling.toUpperCase() === 'YES') {
                     const endMarkers = [
@@ -843,16 +840,24 @@
                     }
 
                     const nameRegex = /^Name\s*\(\d+\)$/i;
+                    let compCount = 0;
                     for (let i = travelIdx + 1; i < endIdx; i++) {
                         if (nameRegex.test(entries[i].key)) {
-                            result.push({ label: entries[i].key, val: entries[i].value });
+                            compCount++;
+                            const nameVal = entries[i].value;
+                            let relVal = '';
                             for (let j = i + 1; j < endIdx; j++) {
                                 if (entries[j].key.trim().toLowerCase() === 'relationship to you') {
-                                    result.push({ label: 'Relationship to You', val: entries[j].value });
+                                    relVal = entries[j].value;
                                     break;
                                 }
                                 if (nameRegex.test(entries[j].key)) break;
                             }
+                            
+                            const label = `Companion (${compCount})`;
+                            let val = nameVal;
+                            if (relVal) val += ` (${relVal})`;
+                            result.push({ label, val });
                         }
                     }
                 }
@@ -911,7 +916,6 @@
 
                 row.append(k, v);
 
-                // Копирование по клику
                 row.addEventListener('click', () => {
                     const textToCopy = item.val || '—';
                     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -963,7 +967,6 @@
             tabsContainer.innerHTML = '';
 
             if (tabs.length === 0) {
-                // Пустое состояние — показываем только вкладку с плюсом
                 const addTabEl = document.createElement('div');
                 addTabEl.className = 'tab';
                 addTabEl.style.padding = '0';
@@ -1004,7 +1007,6 @@
                 tabsContainer.appendChild(el);
             });
 
-            // Кнопка плюс для добавления новой вкладки
             const addTabBtn = document.createElement('button');
             addTabBtn.className = 'tab-add';
             addTabBtn.type = 'button';
@@ -1121,7 +1123,6 @@
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                // Если вкладок нет — создаем новую
                 if (tabs.length === 0 || !activeTabId) {
                     addTab(file);
                 }
