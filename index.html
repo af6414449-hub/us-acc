@@ -218,11 +218,11 @@
             row-gap: 0;
         }
 
-        /* Сдвигаем столбец значений ближе к левой части на широких экранах */
+        /* Сдвигаем столбец значений ближе к левой части, но не ломаем узкие экраны */
         .row {
             display: grid;
-            grid-template-columns: minmax(100px, 300px) 1fr; /* Ключ фиксированной ширины, значение тянется */
-            column-gap: 30px;
+            grid-template-columns: minmax(80px, 250px) 1fr;
+            column-gap: 20px;
             border-radius: 4px;
             transition: background-color .12s ease;
             cursor: pointer;
@@ -234,13 +234,27 @@
 
         .row .key,
         .row .val {
-            padding: 1px 4px; /* Чуть компактнее по вертикали */
+            padding: 1px 4px;
             margin: 0;
             word-break: break-word;
             white-space: pre-wrap;
+            min-width: 0; /* Важно! Позволяет элементу сжиматься меньше своего содержимого */
         }
         .row .key { font-weight: bold; }
         .row .val { color: #2a2a2a; }
+
+        /* На мобильных экранах возвращаем одну колонку, чтобы текст не сжимался до буквы */
+        @media (max-width: 600px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+            .row .key {
+                margin-top: 4px;
+            }
+            .result {
+                padding: 20px 16px;
+            }
+        }
 
         .section-title {
             grid-column: 1 / -1;
@@ -249,8 +263,8 @@
             text-transform: uppercase;
             letter-spacing: .05em;
             color: #5b7a9d;
-            margin-top: 12px; /* Чуть меньше отступ сверху */
-            margin-bottom: 2px; /* Чуть меньше отступ снизу */
+            margin-top: 12px;
+            margin-bottom: 2px;
             padding-bottom: 2px;
             border-bottom: 1px solid #d8d2c8;
             user-select: none;
@@ -276,12 +290,11 @@
             top: 18px;
             right: 18px;
             flex-direction: column;
-            gap: 8px; /* Чуть меньше расстояние между кнопками */
+            gap: 8px;
             z-index: 10;
         }
         .left-panel.parsed .action-stack { display: flex; }
 
-        /* Уменьшенные кнопки */
         .action-btn {
             width: 46px;
             height: 46px;
