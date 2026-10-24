@@ -18,7 +18,6 @@
             flex-direction: column;
         }
 
-        /* Панель вкладок (видна всегда) */
         .tabs-bar {
             display: flex;
             align-items: flex-end;
@@ -114,9 +113,8 @@
         }
         .tab-add:hover { background-color: #ded9cf; }
 
-        /* Кнопка меню (тёмно-синяя) */
         .menu-btn {
-            margin-left: auto; /* прижимает к правому краю */
+            margin-left: auto;
             width: 38px;
             height: 38px;
             border: none;
@@ -133,66 +131,6 @@
         }
         .menu-btn:hover { background-color: #142e48; }
         .menu-btn svg { width: 20px; height: 20px; display: block; }
-
-        /* Модальное окно */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.4);
-            z-index: 100;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.visible { display: flex; }
-
-        .modal-content {
-            background-color: #f9f6f0;
-            border-radius: 16px;
-            padding: 24px;
-            min-width: 300px;
-            max-width: 400px;
-            box-shadow: 0 8px 32px rgba(0,0,0,.2);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 28px;
-            height: 28px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            color: #c62828;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background-color .15s;
-        }
-        .modal-close:hover { background-color: rgba(198, 40, 40, 0.1); }
-        .modal-close svg { width: 16px; height: 16px; }
-        .modal-close path { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
-
-        .modal-link {
-            display: block;
-            padding: 12px 16px;
-            background-color: #e8e4dc;
-            border-radius: 10px;
-            text-decoration: none;
-            color: #1a1a1a;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-            transition: background-color .15s;
-        }
-        .modal-link:hover { background-color: #ded9cf; }
 
         .main-area {
             flex: 1;
@@ -286,9 +224,12 @@
             column-gap: 20px;
             border-radius: 4px;
             transition: background-color .12s ease;
+            cursor: pointer;
+            user-select: none;
         }
 
         .row:hover { background-color: rgba(0, 0, 0, 0.045); }
+        .row.copied { background-color: rgba(46, 125, 50, 0.2) !important; transition: background-color 0s; }
 
         .row .key,
         .row .val {
@@ -306,11 +247,12 @@
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: .05em;
-            color: #6b6b6b;
+            color: #5b7a9d; /* Цвет заголовков */
             margin-top: 16px;
             margin-bottom: 4px;
             padding-bottom: 2px;
             border-bottom: 1px solid #d8d2c8;
+            user-select: none;
         }
 
         .file-meta {
@@ -322,6 +264,7 @@
             margin-bottom: 12px;
             font-size: 13px;
             color: #6b6b6b;
+            user-select: none;
         }
         .file-meta .file-name { font-weight: bold; color: #1a1a1a; }
         .file-meta .file-date { font-style: italic; white-space: nowrap; }
@@ -332,6 +275,7 @@
             .file-meta { flex-direction: column; gap: 4px; }
         }
 
+        /* Одна кнопка фильтра */
         .action-stack {
             display: none;
             position: absolute;
@@ -363,38 +307,17 @@
             padding: 0;
         }
         .action-btn:active { transform: scale(.97); }
+        .action-btn:hover { filter: brightness(1.1); }
 
-        .action-btn.all,
-        .action-btn.ais,
-        .action-btn.usv {
-            opacity: 0.4;
-        }
-
-        .action-btn.active {
-            opacity: 1;
-        }
-
-        .action-btn.all {
-            background-color: #5a8f5a;
-        }
-        .action-btn.ais {
-            background-color: #5b7a9d;
-        }
-        .action-btn.usv {
-            background-color: #b0584f;
-        }
-
-        .action-btn:hover {
-            filter: brightness(1.1);
-        }
-        .action-btn.active:hover {
-            filter: brightness(0.94);
-        }
+        /* Цвета для кнопки фильтра */
+        .action-btn.filter-ais { background-color: #5b7a9d; }
+        .action-btn.filter-usv { background-color: #b0584f; }
+        .action-btn.filter-all { background-color: #5a8f5a; }
 
         .action-btn .label-svg { display: block; width: 36px; height: 36px; }
-        .action-btn.all .label-svg { width: 34px; }
-        .action-btn.ais .label-svg { width: 34px; }
-        .action-btn.usv .label-svg { width: 36px; }
+        .action-btn.filter-all .label-svg { width: 34px; }
+        .action-btn.filter-ais .label-svg { width: 34px; }
+        .action-btn.filter-usv .label-svg { width: 36px; }
 
         .action-btn .label-svg text {
             fill: #fff;
@@ -406,13 +329,71 @@
             dominant-baseline: middle;
             text-anchor: middle;
         }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.visible { display: flex; }
+
+        .modal-content {
+            background-color: #f9f6f0;
+            border-radius: 16px;
+            padding: 24px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #c62828;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color .15s;
+        }
+        .modal-close:hover { background-color: rgba(198, 40, 40, 0.1); }
+        .modal-close svg { width: 16px; height: 16px; }
+        .modal-close path { stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+
+        .modal-link {
+            display: block;
+            padding: 12px 16px;
+            background-color: #e8e4dc;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #1a1a1a;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            transition: background-color .15s;
+        }
+        .modal-link:hover { background-color: #ded9cf; }
     </style>
 </head>
 <body>
-    <!-- Панель вкладок (видна всегда) -->
     <div class="tabs-bar">
         <div id="tabsContainer" style="display:flex; gap:4px;"></div>
-        <button class="tab-add" id="tabAddBtn" type="button" aria-label="Добавить вкладку">+</button>
         <button class="menu-btn" id="menuBtn" type="button" aria-label="Меню">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -423,19 +404,9 @@
     <div class="main-area">
         <section class="left-panel" id="leftPanel">
             <div class="action-stack" aria-label="Действия">
-                <button class="action-btn all active" id="allBtn" type="button" aria-label="Все поля">
-                    <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <text x="20" y="21">ALL</text>
-                    </svg>
-                </button>
-                <button class="action-btn ais" id="aisBtn" type="button" aria-label="AIS">
+                <button class="action-btn filter-ais" id="filterBtn" type="button" aria-label="Сменить фильтр">
                     <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <text x="20" y="21">AIS</text>
-                    </svg>
-                </button>
-                <button class="action-btn usv" id="usvBtn" type="button" aria-label="USV">
-                    <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <text x="20" y="21">USV</text>
                     </svg>
                 </button>
             </div>
@@ -477,11 +448,8 @@
         const dropZone      = document.getElementById('dropZone');
         const fileInput     = document.getElementById('fileInput');
         const resultEl      = document.getElementById('result');
-        const allBtn        = document.getElementById('allBtn');
-        const aisBtn        = document.getElementById('aisBtn');
-        const usvBtn        = document.getElementById('usvBtn');
+        const filterBtn     = document.getElementById('filterBtn');
         const tabsContainer = document.getElementById('tabsContainer');
-        const tabAddBtn     = document.getElementById('tabAddBtn');
         const menuBtn       = document.getElementById('menuBtn');
         const modalOverlay  = document.getElementById('modalOverlay');
         const modalClose    = document.getElementById('modalClose');
@@ -489,7 +457,7 @@
         let tabs = [];
         let activeTabId = null;
         let nextTabId = 1;
-        let activeFilter = 'all';
+        let activeFilter = 'ais'; // По умолчанию AIS
 
         function isPdf(file) {
             return file.type === 'application/pdf' ||
@@ -844,7 +812,6 @@
             const school = get('Name of School')?.value;
             if (school) result.push({ label: 'Name of School', val: school });
 
-            // Street Address для SEVIS — берём после SEVIS ID
             const sevisIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'sevis id');
             let schoolAddress = '';
             if (sevisIdx !== -1) {
@@ -943,18 +910,31 @@
                 v.textContent = item.val || '—';
 
                 row.append(k, v);
+
+                // Копирование по клику
+                row.addEventListener('click', () => {
+                    const textToCopy = item.val || '—';
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        row.classList.add('copied');
+                        setTimeout(() => {
+                            row.classList.remove('copied');
+                        }, 300);
+                    });
+                });
+
                 rows.appendChild(row);
             }
 
             resultEl.appendChild(rows);
         }
 
-        function setActiveButton(filter) {
-            activeFilter = filter;
-            [allBtn, aisBtn, usvBtn].forEach(b => b.classList.remove('active'));
-            if (filter === 'all') allBtn.classList.add('active');
-            if (filter === 'ais') aisBtn.classList.add('active');
-            if (filter === 'usv') usvBtn.classList.add('active');
+        function updateFilterButton() {
+            filterBtn.className = 'action-btn filter-' + activeFilter;
+            filterBtn.innerHTML = `
+                <svg class="label-svg" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <text x="20" y="21">${activeFilter.toUpperCase()}</text>
+                </svg>
+            `;
         }
 
         function renderActive() {
@@ -981,6 +961,22 @@
 
         function updateTabsUi() {
             tabsContainer.innerHTML = '';
+
+            if (tabs.length === 0) {
+                // Пустое состояние — показываем только вкладку с плюсом
+                const addTabEl = document.createElement('div');
+                addTabEl.className = 'tab';
+                addTabEl.style.padding = '0';
+                addTabEl.style.width = '38px';
+                addTabEl.style.justifyContent = 'center';
+                addTabEl.innerHTML = '<span style="font-size:20px; font-weight:bold; color:#4a4a4a;">+</span>';
+                addTabEl.addEventListener('click', () => {
+                    fileInput.click();
+                });
+                tabsContainer.appendChild(addTabEl);
+                return;
+            }
+
             tabs.forEach(tab => {
                 const el = document.createElement('div');
                 el.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
@@ -1007,6 +1003,16 @@
 
                 tabsContainer.appendChild(el);
             });
+
+            // Кнопка плюс для добавления новой вкладки
+            const addTabBtn = document.createElement('button');
+            addTabBtn.className = 'tab-add';
+            addTabBtn.type = 'button';
+            addTabBtn.textContent = '+';
+            addTabBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+            tabsContainer.appendChild(addTabBtn);
         }
 
         function switchTab(id) {
@@ -1115,7 +1121,8 @@
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                if (!activeTabId) {
+                // Если вкладок нет — создаем новую
+                if (tabs.length === 0 || !activeTabId) {
                     addTab(file);
                 }
                 loadFileIntoActiveTab(file);
@@ -1138,35 +1145,22 @@
         dropZone.addEventListener('drop', (e) => {
             const files = e.dataTransfer?.files;
             if (files && files.length) {
-                if (!activeTabId) {
+                if (tabs.length === 0 || !activeTabId) {
                     addTab(files[0]);
                 }
                 loadFileIntoActiveTab(files[0]);
             }
         });
 
-        allBtn.addEventListener('click', () => {
-            setActiveButton('all');
-            renderActive();
-        });
-        aisBtn.addEventListener('click', () => {
-            setActiveButton('ais');
-            renderActive();
-        });
-        usvBtn.addEventListener('click', () => {
-            setActiveButton('usv');
+        filterBtn.addEventListener('click', () => {
+            if (activeFilter === 'ais') activeFilter = 'usv';
+            else if (activeFilter === 'usv') activeFilter = 'all';
+            else activeFilter = 'ais';
+            
+            updateFilterButton();
             renderActive();
         });
 
-        tabAddBtn.addEventListener('click', () => {
-            addTab(null);
-            leftPanel.classList.remove('parsed');
-            resultEl.innerHTML = '';
-            dropZone.classList.remove('loaded');
-            fileInput.value = '';
-        });
-
-        // Модальное окно
         menuBtn.addEventListener('click', () => {
             modalOverlay.classList.add('visible');
         });
@@ -1179,9 +1173,8 @@
             }
         });
 
-        addTab(null);
-        leftPanel.classList.remove('parsed');
-        setActiveButton('all');
+        updateFilterButton();
+        updateTabsUi();
     </script>
 </body>
 </html>
