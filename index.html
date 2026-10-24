@@ -386,6 +386,10 @@
             transition: background-color .15s;
         }
         .modal-link:hover { background-color: #ded9cf; }
+
+        /* Стили для подсветки */
+        .date-highlight { color: #8b0000; font-weight: bold; }
+        .passport-letter-highlight { color: #ff8c00; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -651,6 +655,31 @@
             return entries;
         }
 
+        /* Вспомогательные функции для склейки */
+        function cleanJoinedValue(val) {
+            if (!val) return val;
+            // Убираем DOES NOT APPLY (без учета регистра)
+            let cleaned = val.replace(/\bdoes not apply\b/gi, '');
+            // Убираем двойные запятые, лишние пробелы и запятые в начале/конце
+            cleaned = cleaned.replace(/,\s*,/g, ',').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+/g, ' ');
+            return cleaned;
+        }
+
+        function highlightValue(val, isPassport = false) {
+            if (!val) return '—';
+            let html = val;
+
+            // Выделение дат (17 Jun 2020 или 17 June 2020)
+            html = html.replace(/\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/g, '<span class="date-highlight">$1</span>');
+
+            // Выделение букв в паспорте
+            if (isPassport) {
+                html = html.replace(/([A-Za-z]+)/g, '<span class="passport-letter-highlight">$1</span>');
+            }
+
+            return html;
+        }
+
         /* AIS фильтр */
         function applyAisFilter(entries) {
             const result = [];
@@ -658,6 +687,9 @@
 
             const dsId = get('DS-160 ID')?.value;
             if (dsId) result.push({ label: 'DS-160 ID', val: dsId });
+
+            const specify = get('Specify')?.value;
+            if (specify) result.push({ label: 'Visa Category', val: specify });
 
             const currentLoc = get('Current Location')?.value;
             if (currentLoc) result.push({ label: 'Current Location', val: currentLoc });
@@ -696,7 +728,7 @@
             if (emailVal) result.push({ label: 'Email Address', val: emailVal });
 
             const passportNum = get('Passport/Travel Document Number')?.value;
-            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum });
+            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum, isPassport: true });
 
             const passportAuth = get('Country/Authority that Issued Passport/Travel Document')?.value;
             if (passportAuth) result.push({ label: 'Country/Authority that Issued Passport/Travel Document', val: passportAuth });
@@ -708,9 +740,6 @@
                 if (cr) homeCountry = cr.value;
             }
             if (homeCountry) result.push({ label: 'Country of Home Address', val: homeCountry });
-
-            const specify = get('Specify')?.value;
-            if (specify) result.push({ label: 'Visa Category', val: specify });
 
             const phone = get('Primary Phone Number')?.value;
             if (phone) result.push({ label: 'Primary Phone Number', val: phone });
@@ -744,17 +773,18 @@
             result.push({ section: 'Данные заявителя:' });
             const nameProvided = get('Name Provided')?.value;
             if (nameProvided) result.push({ label: 'Name Provided', val: nameProvided });
+            
             const email = get('Email Address')?.value;
             if (email) result.push({ label: 'Email Address', val: email });
+
+            const primPhone = get('Primary Phone Number')?.value;
+            if (primPhone) result.push({ label: 'Primary Phone Number', val: primPhone });
+
             const birthVal = get('Country/Region of Birth')?.value;
             if (birthVal) {
                 const parts = birthVal.split(',');
                 result.push({ label: 'Country/Region of Birth', val: parts[parts.length - 1].trim() });
             }
-            const primPhone = get('Primary Phone Number')?.value;
-            if (primPhone) result.push({ label: 'Primary Phone Number', val: primPhone });
-            const secPhone = get('Secondary Phone Number')?.value;
-            if (secPhone) result.push({ label: 'Secondary Phone Number', val: secPhone });
 
             result.push({ section: 'Адрес для корреспонденции:' });
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
@@ -766,19 +796,24 @@
                 const country = entries.slice(homeIdx).find(e => e.key.trim().toLowerCase() === 'country/region')?.value;
 
                 const parts = [homeAddress, city, state, zip, country].filter(Boolean);
-                if (parts.length) result.push({ label: 'Home Address', val: parts.join(', ') });
+                if (parts.length) {
+                    const joined = cleanJoinedValue(parts.join(', '));
+                    result.push({ label: 'Home Address', val: joined });
+                }
             }
 
             result.push({ section: 'Паспортные данные:' });
             const passportNum = get('Passport/Travel Document Number')?.value;
-            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum });
+            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum, isPassport: true });
+            
             const issuanceDate = get('Issuance Date')?.value;
             if (issuanceDate) result.push({ label: 'Issuance Date', val: issuanceDate });
             
             const cityIssued = get('City where issued')?.value;
             const countryIssued = get('Country/Region where issued')?.value;
             if (cityIssued || countryIssued) {
-                result.push({ label: 'Place where issued', val: [cityIssued, countryIssued].filter(Boolean).join(', ') });
+                const joined = cleanJoinedValue([cityIssued, countryIssued].filter(Boolean).join(', '));
+                result.push({ label: 'Place where issued', val: joined });
             }
 
             const expirationDate = get('Expiration Date')?.value;
@@ -807,7 +842,6 @@
             if (sevisIdx !== -1) {
                 const addrEntry = entries.slice(sevisIdx).find(e => e.key.trim().toLowerCase() === 'street address');
                 if (addrEntry) {
-                    // Оставляем только 5-значный индекс в конце
                     const matches = addrEntry.value.match(/\b\d{5}\b/g);
                     if (matches) {
                         schoolAddress = matches[matches.length - 1];
@@ -857,7 +891,7 @@
                             const label = `Companion (${compCount})`;
                             let val = nameVal;
                             if (relVal) val += ` (${relVal})`;
-                            result.push({ label, val });
+                            result.push({ label, val: cleanJoinedValue(val) });
                         }
                     }
                 }
@@ -912,7 +946,7 @@
 
                 const v = document.createElement('div');
                 v.className = 'val';
-                v.textContent = item.val || '—';
+                v.innerHTML = highlightValue(item.val, item.isPassport);
 
                 row.append(k, v);
 
