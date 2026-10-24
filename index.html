@@ -389,7 +389,7 @@
 
         /* Стили для подсветки */
         .date-highlight { color: #8b0000; font-weight: bold; }
-        .passport-letter-highlight { color: #ff8c00; font-weight: bold; }
+        .passport-letter-highlight { color: #cc5500; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -658,9 +658,7 @@
         /* Вспомогательные функции для склейки */
         function cleanJoinedValue(val) {
             if (!val) return val;
-            // Убираем DOES NOT APPLY (без учета регистра)
             let cleaned = val.replace(/\bdoes not apply\b/gi, '');
-            // Убираем двойные запятые, лишние пробелы и запятые в начале/конце
             cleaned = cleaned.replace(/,\s*,/g, ',').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+/g, ' ');
             return cleaned;
         }
@@ -668,15 +666,10 @@
         function highlightValue(val, isPassport = false) {
             if (!val) return '—';
             let html = val;
-
-            // Выделение дат (17 Jun 2020 или 17 June 2020)
             html = html.replace(/\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/g, '<span class="date-highlight">$1</span>');
-
-            // Выделение букв в паспорте
             if (isPassport) {
                 html = html.replace(/([A-Za-z]+)/g, '<span class="passport-letter-highlight">$1</span>');
             }
-
             return html;
         }
 
@@ -703,11 +696,11 @@
             const birthVal = get('Country/Region of Birth')?.value;
             if (birthVal) {
                 const parts = birthVal.split(',');
-                result.push({ label: 'Country/Region of Birth', val: parts[parts.length - 1].trim() });
+                result.push({ label: 'Birth Country', val: parts[parts.length - 1].trim() });
             }
 
             const origin = get('Country/Region of Origin (Nationality)')?.value;
-            if (origin) result.push({ label: 'Country/Region of Origin (Nationality)', val: origin });
+            if (origin) result.push({ label: 'Nationality', val: origin });
 
             const nationalityQ = get('Do you hold or have you held any nationality other than the one indicated above on nationality')?.value;
             if (nationalityQ) result.push({ label: 'Do you hold or have you held any nationality other than the one indicated above on nationality?', val: nationalityQ });
@@ -783,7 +776,7 @@
             const birthVal = get('Country/Region of Birth')?.value;
             if (birthVal) {
                 const parts = birthVal.split(',');
-                result.push({ label: 'Country/Region of Birth', val: parts[parts.length - 1].trim() });
+                result.push({ label: 'Birth Country', val: parts[parts.length - 1].trim() });
             }
 
             result.push({ section: 'Адрес для корреспонденции:' });
@@ -821,9 +814,7 @@
             const dob = get('Date of Birth')?.value;
             if (dob) result.push({ label: 'Date of Birth', val: dob });
             const origin = get('Country/Region of Origin (Nationality)')?.value;
-            if (origin) result.push({ label: 'Country/Region of Origin (Nationality)', val: origin });
-            const natId = get('National Identification Number')?.value;
-            if (natId) result.push({ label: 'National Identification Number', val: natId });
+            if (origin) result.push({ label: 'Nationality', val: origin });
 
             const nationalityQuestion = get('Do you hold or have you held any nationality other than the one indicated above on nationality')?.value;
             if (nationalityQuestion) result.push({ label: 'Do you hold or have you held any nationality other than the one indicated above on nationality?', val: nationalityQuestion });
@@ -831,26 +822,42 @@
             const residentQuestion = get('Are you a permanent resident of a country/region other than your country/region of origin (nationality) above')?.value;
             if (residentQuestion) result.push({ label: 'Are you a permanent resident of a country/region other than your country/region of origin (nationality) above?', val: residentQuestion });
 
-            result.push({ section: 'Номер SEVIS:' });
-            const sevisId = get('SEVIS ID')?.value;
-            if (sevisId) result.push({ label: 'SEVIS ID', val: sevisId });
-            const school = get('Name of School')?.value;
-            if (school) result.push({ label: 'Name of School', val: school });
-
-            const sevisIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'sevis id');
-            let schoolAddress = '';
-            if (sevisIdx !== -1) {
-                const addrEntry = entries.slice(sevisIdx).find(e => e.key.trim().toLowerCase() === 'street address');
-                if (addrEntry) {
-                    const matches = addrEntry.value.match(/\b\d{5}\b/g);
-                    if (matches) {
-                        schoolAddress = matches[matches.length - 1];
-                    } else {
-                        schoolAddress = addrEntry.value;
+            // Проверка на B1/B2 для скрытия SEVIS
+            let isB1B2 = false;
+            if (specify) {
+                if (specify.toUpperCase().includes('B1/B2')) {
+                    isB1B2 = true;
+                } else {
+                    const matches = specify.match(/\(([^)]+)\)/g);
+                    if (matches && matches.length > 0) {
+                        const lastMatch = matches[matches.length - 1].replace(/[()]/g, '').trim();
+                        if (lastMatch === 'B1/B2') isB1B2 = true;
                     }
                 }
             }
-            if (schoolAddress) result.push({ label: 'Street Address', val: schoolAddress });
+
+            if (!isB1B2) {
+                result.push({ section: 'Номер SEVIS:' });
+                const sevisId = get('SEVIS ID')?.value;
+                if (sevisId) result.push({ label: 'SEVIS ID', val: sevisId });
+                const school = get('Name of School')?.value;
+                if (school) result.push({ label: 'Name of School', val: school });
+
+                const sevisIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'sevis id');
+                let schoolAddress = '';
+                if (sevisIdx !== -1) {
+                    const addrEntry = entries.slice(sevisIdx).find(e => e.key.trim().toLowerCase() === 'street address');
+                    if (addrEntry) {
+                        const matches = addrEntry.value.match(/\b\d{5}\b/g);
+                        if (matches) {
+                            schoolAddress = matches[matches.length - 1];
+                        } else {
+                            schoolAddress = addrEntry.value;
+                        }
+                    }
+                }
+                if (schoolAddress) result.push({ label: 'Street Address', val: schoolAddress });
+            }
 
             result.push({ section: 'Сопровождающие:' });
             const travelIdx = entries.findIndex(e => e.key.trim().toLowerCase() === 'other persons traveling with you');
