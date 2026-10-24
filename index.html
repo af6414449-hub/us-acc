@@ -218,9 +218,10 @@
             row-gap: 0;
         }
 
+        /* Всегда два столбца, даже на узких экранах */
         .row {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-columns: 1fr 1fr;
             column-gap: 20px;
             border-radius: 4px;
             transition: background-color .12s ease;
@@ -268,12 +269,6 @@
         }
         .file-meta .file-name { font-weight: bold; color: #1a1a1a; }
         .file-meta .file-date { font-style: italic; white-space: nowrap; }
-
-        @media (max-width: 700px) {
-            .row { grid-template-columns: 1fr; }
-            .row .key { margin-top: 6px; }
-            .file-meta { flex-direction: column; gap: 4px; }
-        }
 
         .action-stack {
             display: none;
@@ -387,7 +382,6 @@
         }
         .modal-link:hover { background-color: #ded9cf; }
 
-        /* Стили для подсветки */
         .date-highlight { color: #8b0000; font-weight: bold; }
         .passport-letter-highlight { color: #cc5500; font-weight: bold; }
     </style>
@@ -655,7 +649,6 @@
             return entries;
         }
 
-        /* Вспомогательные функции для склейки */
         function cleanJoinedValue(val) {
             if (!val) return val;
             let cleaned = val.replace(/\bdoes not apply\b/gi, '');
@@ -721,10 +714,10 @@
             if (emailVal) result.push({ label: 'Email Address', val: emailVal });
 
             const passportNum = get('Passport/Travel Document Number')?.value;
-            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum, isPassport: true });
+            if (passportNum) result.push({ label: 'Passport Number', val: passportNum, isPassport: true });
 
             const passportAuth = get('Country/Authority that Issued Passport/Travel Document')?.value;
-            if (passportAuth) result.push({ label: 'Country/Authority that Issued Passport/Travel Document', val: passportAuth });
+            if (passportAuth) result.push({ label: 'Country that issued passport', val: passportAuth });
 
             let homeCountry = '';
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
@@ -779,7 +772,6 @@
                 result.push({ label: 'Birth Country', val: parts[parts.length - 1].trim() });
             }
 
-            result.push({ section: 'Адрес для корреспонденции:' });
             const homeIdx = entries.findIndex(e => e.key.toLowerCase().includes('home address'));
             if (homeIdx !== -1) {
                 const homeAddress = entries[homeIdx].value;
@@ -797,7 +789,7 @@
 
             result.push({ section: 'Паспортные данные:' });
             const passportNum = get('Passport/Travel Document Number')?.value;
-            if (passportNum) result.push({ label: 'Passport/Travel Document Number', val: passportNum, isPassport: true });
+            if (passportNum) result.push({ label: 'Passport Number', val: passportNum, isPassport: true });
             
             const issuanceDate = get('Issuance Date')?.value;
             if (issuanceDate) result.push({ label: 'Issuance Date', val: issuanceDate });
@@ -822,7 +814,6 @@
             const residentQuestion = get('Are you a permanent resident of a country/region other than your country/region of origin (nationality) above')?.value;
             if (residentQuestion) result.push({ label: 'Are you a permanent resident of a country/region other than your country/region of origin (nationality) above?', val: residentQuestion });
 
-            // Проверка на B1/B2 для скрытия SEVIS
             let isB1B2 = false;
             if (specify) {
                 if (specify.toUpperCase().includes('B1/B2')) {
