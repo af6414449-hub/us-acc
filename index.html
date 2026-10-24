@@ -322,7 +322,6 @@
             text-anchor: middle;
         }
 
-        /* Кнопка открытия файла */
         .action-btn.open-file {
             background-color: #2a2a2a;
         }
@@ -401,8 +400,18 @@
         }
         .modal-link:hover { background-color: #ded9cf; }
 
+        /* Стили для подсветки */
         .date-highlight { color: #8b0000; font-weight: bold; }
-        .passport-letter-highlight { color: #cc5500; font-weight: bold; }
+        .passport-letter-highlight { color: #8b0000; font-weight: bold; }
+        
+        /* Подсветка цифр в телефоне */
+        .phone-4 { color: #00008b; font-weight: bold; } /* темно-синий */
+        .phone-3 { color: #006400; font-weight: bold; } /* темно-зеленый */
+        .phone-3-orange { color: #8b4500; font-weight: bold; } /* темно-оранжевый */
+
+        /* Подсветка цифр в паспорте */
+        .passport-3 { color: #00008b; font-weight: bold; } /* темно-синий */
+        .passport-3-green { color: #006400; font-weight: bold; } /* темно-зеленый */
     </style>
 </head>
 <body>
@@ -685,13 +694,57 @@
             return cleaned;
         }
 
-        function highlightValue(val, isPassport = false) {
+        function highlightValue(val, isPassport = false, isPhone = false) {
             if (!val) return '—';
             let html = val;
+
+            // Подсветка дат
             html = html.replace(/\b(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})\b/g, '<span class="date-highlight">$1</span>');
+
+            // Подсветка букв в паспорте
             if (isPassport) {
                 html = html.replace(/([A-Za-z]+)/g, '<span class="passport-letter-highlight">$1</span>');
             }
+
+            // Подсветка цифр в телефоне
+            if (isPhone) {
+                // Ищем все цифры
+                const digits = val.replace(/\D/g, '');
+                if (digits.length >= 10) {
+                    let idx = 0;
+                    html = val.replace(/\d/g, (match) => {
+                        const posFromEnd = digits.length - 1 - idx;
+                        idx++;
+                        if (posFromEnd < 4) {
+                            return `<span class="phone-4">${match}</span>`;
+                        } else if (posFromEnd < 7) {
+                            return `<span class="phone-3">${match}</span>`;
+                        } else if (posFromEnd < 10) {
+                            return `<span class="phone-3-orange">${match}</span>`;
+                        }
+                        return match;
+                    });
+                }
+            }
+
+            // Подсветка цифр в паспорте
+            if (isPassport) {
+                const digits = val.replace(/\D/g, '');
+                if (digits.length >= 6) {
+                    let idx = 0;
+                    html = val.replace(/\d/g, (match) => {
+                        const posFromEnd = digits.length - 1 - idx;
+                        idx++;
+                        if (posFromEnd < 3) {
+                            return `<span class="passport-3">${match}</span>`;
+                        } else if (posFromEnd < 6) {
+                            return `<span class="passport-3-green">${match}</span>`;
+                        }
+                        return match;
+                    });
+                }
+            }
+
             return html;
         }
 
@@ -703,8 +756,12 @@
             const dsId = get('DS-160 ID')?.value;
             if (dsId) result.push({ label: 'DS-160 ID', val: dsId });
 
-            const specify = get('Specify')?.value;
-            if (specify) result.push({ label: 'Visa Category', val: specify });
+            let specify = get('Specify')?.value;
+            if (specify) {
+                const match = specify.match(/\(([^)]+)\)/);
+                if (match) specify = match[1];
+                result.push({ label: 'Visa Category', val: specify });
+            }
 
             const currentLoc = get('Current Location')?.value;
             if (currentLoc) result.push({ label: 'Current Location', val: currentLoc });
@@ -757,7 +814,7 @@
             if (homeCountry) result.push({ label: 'Country of Home Address', val: homeCountry });
 
             const phone = get('Primary Phone Number')?.value;
-            if (phone) result.push({ label: 'Primary Phone Number', val: phone });
+            if (phone) result.push({ label: 'Primary Phone Number', val: phone, isPhone: true });
 
             const issuedVisa = get('Have you ever been issued a U.S. Visa')?.value;
             if (issuedVisa) result.push({ label: 'Have you ever been issued a U.S. Visa', val: issuedVisa });
@@ -779,8 +836,12 @@
             const dsId = get('DS-160 ID')?.value;
             if (dsId) result.push({ label: 'DS-160 ID', val: dsId });
 
-            const specify = get('Specify')?.value;
-            if (specify) result.push({ label: 'Visa Category', val: specify });
+            let specify = get('Specify')?.value;
+            if (specify) {
+                const match = specify.match(/\(([^)]+)\)/);
+                if (match) specify = match[1];
+                result.push({ label: 'Visa Category', val: specify });
+            }
 
             const currentLoc = get('Current Location')?.value;
             if (currentLoc) result.push({ label: 'Current Location', val: currentLoc });
@@ -793,7 +854,7 @@
             if (email) result.push({ label: 'Email Address', val: email });
 
             const primPhone = get('Primary Phone Number')?.value;
-            if (primPhone) result.push({ label: 'Primary Phone Number', val: primPhone });
+            if (primPhone) result.push({ label: 'Primary Phone Number', val: primPhone, isPhone: true });
 
             const birthVal = get('Country/Region of Birth')?.value;
             if (birthVal) {
@@ -847,12 +908,6 @@
             if (specify) {
                 if (specify.toUpperCase().includes('B1/B2')) {
                     isB1B2 = true;
-                } else {
-                    const matches = specify.match(/\(([^)]+)\)/g);
-                    if (matches && matches.length > 0) {
-                        const lastMatch = matches[matches.length - 1].replace(/[()]/g, '').trim();
-                        if (lastMatch === 'B1/B2') isB1B2 = true;
-                    }
                 }
             }
 
@@ -973,7 +1028,7 @@
 
                 const v = document.createElement('div');
                 v.className = 'val';
-                v.innerHTML = highlightValue(item.val, item.isPassport);
+                v.innerHTML = highlightValue(item.val, item.isPassport, item.isPhone);
 
                 row.append(k, v);
 
@@ -1146,7 +1201,7 @@
 
                 const get = (name) => entries.find(e => e.key.trim().toLowerCase() === name.toLowerCase())?.value;
                 const nameProvided = get('Name Provided') || file.name.replace(/\.pdf$/i, '');
-                const specify = get('Specify');
+                let specify = get('Specify');
 
                 let cleanSpecify = '';
                 if (specify) {
